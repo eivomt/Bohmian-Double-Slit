@@ -41,8 +41,8 @@
   const x0 = 0
   const y0 = 0
 
-  const sigmaX = 5.2
-  const sigmaY = 5.2
+  const sigmaX = 2.25
+  const sigmaY = sigmaX
 
   const canvas = document.getElementById('plot')
   const ctx = canvas.getContext('2d')
@@ -55,8 +55,9 @@
         const X = x.reshape([1, N]).tile([N,1])
         const Y = y.reshape([N,1]).tile([1,N])
 
-        const gaussianX = X.sub(x0).div(sigmaX).square().mul(0.5)
-        const gaussianY = Y.sub(y0).div(sigmaY).square().mul(0.5)
+        // psi(x,y,0) =m exp(-((x-x0)/4sigmaX)^2 - ((y-y0)/4sigmaY)^2)
+        const gaussianX = X.sub(x0).div(sigmaX).square().mul(0.25)
+        const gaussianY = Y.sub(y0).div(sigmaY).square().mul(0.25)
 
         const psi = gaussianX.add(gaussianY).neg().exp()
 
@@ -104,11 +105,13 @@
     const oy = (H-S) * 0.5
 
     ctx.save()
-    ctx.setTransform(1,0,0,1,0,0)
-    ctx.imageSmoothingEnabled = false
+    // ctx.setTransform(1,0,0,1,0,0)
+    // ctx.imageSmoothingEnabled = false
     ctx.clearRect(0,0, canvas.width, canvas.height)
+    ctx.fillStyle = 'black'
+    ctx.fillRect(0,0,W,H)
     ctx.drawImage(offScreen,ox,oy,S,S)
-    ctx.restore
+    ctx.restore()
   }
 
   const psi = initializePsi()
