@@ -1,10 +1,10 @@
 import * as THREE from "three";
-import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { moveCamera } from './cameraControls.js'
 import { getTopViewQuaternion } from './cameraControls.js'
 import { loadQFieldCSV, loadForceFieldCSV, cropNaNBorder, cropNaNBorderForceField } from "./loadFromCSV.js";
 import { initParticle, updatePosition } from "./particle.js";
 import { findLocalMidpoint, addHelpers, makeLineFromVector2, getRandomV0 } from "./geometryHelpers.js";
+import { setUpScene } from "./setUpScene.js";
 
 
 const {scene, camera, renderer, controls, dir1, dir2, point, point2} = setUpScene()
@@ -73,19 +73,6 @@ function getGradient(mesh, x, z) {
     -normal.x / normal.y,
     -normal.z / normal.y
   );
-}
-
-function getHeight(mesh, x, z) {
-  raycaster.set(
-    new THREE.Vector3(x, 10, z),
-    new THREE.Vector3(0, -1, 0)
-  );
-
-  const hits = raycaster.intersectObject(mesh);
-
-  if (hits.length === 0) return null;
-
-  return hits[0].point.y;
 }
 
 // -----------------------------
@@ -241,12 +228,11 @@ directionalColor2.addEventListener('input', () => {
 
 
 
-
-
 // -----------------------------
 // Main
 // -----------------------------
-let surfaceMesh = null;
+let surfaceMesh = null
+let forceField = null
 let particle = null
 let velocity = null
 const clock = new THREE.Clock()
@@ -256,6 +242,10 @@ async function main() {
     let { x1d, y1d, Q } = await loadQFieldCSV("./data/Q.csv");
     ({ x1d, y1d, Q } = cropNaNBorder(x1d, y1d, Q));
 
+    let force = await loadForceFieldCSV("./data/Q_gradient_negative.csv");
+    force = cropNaNBorderForceField(force.x1d, force.y1d, force.Fx, force.Fy);
+    forceField = force;
+
     // Adjust this if your z range is too dramatic
     const zScale = 1.0;
 
@@ -263,7 +253,7 @@ async function main() {
     surfaceMesh = mesh;
     scene.add(surfaceMesh);
 
-    const { s1, s2 } = addHelpers(surfaceMesh)
+    const { s1, s2 } = addHelpers(surfaceMesh, point, point2, scene)
 
 
     const xSpan = x1d[x1d.length - 1] - x1d[0];
@@ -277,7 +267,7 @@ async function main() {
     scene.add(makeLineFromVector2(s1.position.clone(), v0s1))
     scene.add(makeLineFromVector2(s2.position.clone(), v0s2))
 
-    particle = initParticle(s1)
+    particle = initParticle(s1, scene)
     velocity = v0s1.clone()
 
     // addAxes(0.35 * span);
@@ -303,10 +293,13 @@ main();
 function animate() {
   requestAnimationFrame(animate);
 
-  const dt = clock.getDelta() / 1e1
+  const dt = Math.min(clock.getDelta(), 1 / 30);
+  const substeps = 32;
+  const h = dt / substeps;
 
   if (particle && velocity && surfaceMesh) {
-    velocity = updatePosition(velocity, particle, dt, 0.01, surfaceMesh)
+    velocity = updatePosition(velocity, particle, h, 0.5, surfaceMesh, forceField, raycaster)
+    velocity = updatePosition(velocity, particle, h, 0.5, surfaceMesh, forceField, raycaster)
   }
 
   controls.update();

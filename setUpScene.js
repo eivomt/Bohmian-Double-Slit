@@ -1,3 +1,6 @@
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
 // -----------------------------
 // Scene setup
 // -----------------------------
@@ -8,6 +11,7 @@ export function setUpScene() {
   const camera = new THREE.OrthographicCamera();
   // const camera = new THREE.PerspectiveCamera();
   camera.position.set(0, 0, 1);
+  camera.zoom = .095
   scene.add( camera );
 
   const renderer = new THREE.WebGLRenderer({ antialias: true });

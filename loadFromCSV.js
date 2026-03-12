@@ -1,3 +1,5 @@
+import * as THREE from "three";
+
 export async function loadQFieldCSV(path) {
   const text = await fetch(path).then(r => {
     if (!r.ok) throw new Error(`Failed to fetch ${path}`);

@@ -1,3 +1,5 @@
+import * as THREE from "three";
+
 export function findLocalMidpoint(mesh, targetX, targetZ, radius = 1) {
   const pos = mesh.geometry.attributes.position;
 
@@ -35,7 +37,7 @@ export function findLocalMidpoint(mesh, targetX, targetZ, radius = 1) {
     .multiplyScalar(0.5);
 }
 
-export function addHelpers(surface) {
+export function addHelpers(surface, point, point2, scene) {
   // global point, point2
 
   let geom = new THREE.SphereGeometry(0.01, 9, 9);
