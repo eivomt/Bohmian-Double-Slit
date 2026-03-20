@@ -2,8 +2,8 @@ import * as THREE from "three";
 import { moveCamera } from './cameraControls.js'
 import { getTopViewQuaternion } from './cameraControls.js'
 import { loadQFieldCSV, loadForceFieldCSV, cropNaNBorder, cropNaNBorderForceField } from "./loadFromCSV.js";
-import { initParticle, updatePosition } from "./particle.js";
-import { findLocalMidpoint, addHelpers, makeLineFromVector2, getRandomV0 } from "./geometryHelpers.js";
+import { initParticle, updatePosition, initTrajectories } from "./particle.js";
+import { findLocalMidpoint, addHelpers, makeLineFromVector2, getRandomV0, lineFromTo } from "./geometryHelpers.js";
 import { setUpScene } from "./setUpScene.js";
 
 
@@ -235,12 +235,14 @@ let surfaceMesh = null
 let forceField = null
 let particle = null
 let velocity = null
+let qField = null
 const clock = new THREE.Clock()
 
 async function main() {
   try {
     let { x1d, y1d, Q } = await loadQFieldCSV("./data/Q.csv");
     ({ x1d, y1d, Q } = cropNaNBorder(x1d, y1d, Q));
+    qField = { x1d, y1d, Q}
 
     let force = await loadForceFieldCSV("./data/Q_gradient_negative.csv");
     force = cropNaNBorderForceField(force.x1d, force.y1d, force.Fx, force.Fy);
@@ -255,14 +257,17 @@ async function main() {
 
     const { s1, s2 } = addHelpers(surfaceMesh, point, point2, scene)
 
-
+    
+    
     const xSpan = x1d[x1d.length - 1] - x1d[0];
     const ySpan = y1d[y1d.length - 1] - y1d[0];
     // const span = Math.max(xSpan, ySpan);
     const span = 500
-
+    
     let v0s1 = getRandomV0()
     let v0s2 = getRandomV0()
+
+    
 
     scene.add(makeLineFromVector2(s1.position.clone(), v0s1))
     scene.add(makeLineFromVector2(s2.position.clone(), v0s2))
@@ -280,10 +285,42 @@ async function main() {
     );
     controls.update();
 
+    scene.updateMatrixWorld(true)
+    mesh.updateMatrixWorld(true)
+
+    const N = 1
+    const deltaTime = 1e-5
+    const t0 = performance.now()
+    const trajectories = initTrajectories(s2, qField, forceField, deltaTime, N)
+    const t1 = performance.now()
+
+    console.log(`initTrajectories finished in ${t1 - t0} ms`)
+    console.log(`with N = ${N}, and`)
+    console.log(`dt = ${deltaTime}`)
+
+    // const t2 = performance.now()
+    // const trajectories2 = initTrajectories(s2, qField, forceField, deltaTime, N)
+    // const t3 = performance.now()
+
+    // console.log(`initTrajectories finished in ${t3 - t2} ms`)
+    // console.log(`with N = ${N}, and`)
+    // console.log(`dt = ${deltaTime}`)
+
+    // const trajectories = trajectories1.concat(trajectories2)
+
+    for (const trajectory of trajectories) {
+      for (let i = 1; i < trajectory.length; i++) {
+        lineFromTo(trajectory[i - 1], trajectory[i], scene)
+      }
+    }
+
   } catch (err) {
     console.error(err);
   }
 }
+
+
+
 
 main();
 
@@ -294,12 +331,11 @@ function animate() {
   requestAnimationFrame(animate);
 
   const dt = Math.min(clock.getDelta(), 1 / 30);
-  const substeps = 32;
+  const substeps = 16;
   const h = dt / substeps;
 
   if (particle && velocity && surfaceMesh) {
-    velocity = updatePosition(velocity, particle, h, 0.5, surfaceMesh, forceField, raycaster)
-    velocity = updatePosition(velocity, particle, h, 0.5, surfaceMesh, forceField, raycaster)
+    velocity = updatePosition(velocity, particle, h, 0.5, qField, forceField, raycaster)
   }
 
   controls.update();

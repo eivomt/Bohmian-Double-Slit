@@ -74,8 +74,8 @@ export function addHelpers(surface, point, point2, scene) {
   point2.castShadow = true
   scene.add( point2 );
 
-  point.position.y += .3
-  point2.position.y += .3
+  point.position.y += 1
+  point2.position.y += 1
 
   // s1.position.set(0, getHeight(surface, 0, -3.5), -3.5);
   // s2.position.set(0, getHeight(surface, 0, 3.5), 3.5);
@@ -108,8 +108,17 @@ export function makeLineFromVector2(origin, dir, color = 0xff0000) {
   return new THREE.Line(geometry, material);
 }
 
+export function lineFromTo(a, b, scene) {
+  const geometry = new THREE.BufferGeometry().setFromPoints([a, b]);
+  const material = new THREE.LineBasicMaterial();
+  const line = new THREE.Line(geometry, material);
+  scene.add(line);
+  return line;
+}
+
 export function getRandomV0(k=2) {
-    const theta = Math.random() * (Math.PI) - Math.PI/2
+    // const theta = Math.random() * (Math.PI) - Math.PI/2
+    const theta = -Math.PI / 3
     let v0 = new THREE.Vector2(k * Math.cos(theta), k * Math.sin(theta))
     // console.log('theta = ' + theta)
     // console.log('v0.x = ' + v0.x)
