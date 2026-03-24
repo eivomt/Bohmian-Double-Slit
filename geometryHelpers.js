@@ -117,8 +117,8 @@ export function lineFromTo(a, b, scene) {
 }
 
 export function getRandomV0(k=2) {
-    // const theta = Math.random() * (Math.PI) - Math.PI/2
-    const theta = -Math.PI / 3
+    const theta = Math.random() * (Math.PI) - Math.PI/2
+    // const theta = -Math.PI / 3
     let v0 = new THREE.Vector2(k * Math.cos(theta), k * Math.sin(theta))
     // console.log('theta = ' + theta)
     // console.log('v0.x = ' + v0.x)
