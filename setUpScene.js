@@ -10,8 +10,8 @@ export function setUpScene() {
 
   const camera = new THREE.OrthographicCamera();
   // const camera = new THREE.PerspectiveCamera();
-  camera.position.set(0, 0, 1);
-  camera.zoom = .095
+  camera.position.set(0, 0, 100);
+  camera.zoom = .00095
   scene.add( camera );
 
   const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -32,7 +32,7 @@ export function setUpScene() {
   dir1.position.set(2, 3, 2);
   scene.add(dir1);
 
-  const dir2 = new THREE.DirectionalLight(0xffffff, 0.15);
+  const dir2 = new THREE.DirectionalLight(0xffffff, 0.75);
   dir2.position.set(-2, 2, -1);
   scene.add(dir2);
 
