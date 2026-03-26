@@ -5,6 +5,8 @@ import { loadQFieldCSV, loadForceFieldCSV, cropNaNBorder, cropNaNBorderForceFiel
 import { initParticle, updatePosition, initTrajectories } from "./particle.js";
 import { findLocalMidpoint, addHelpers, makeLineFromVector2, getRandomV0, lineFromTo } from "./geometryHelpers.js";
 import { setUpScene } from "./setUpScene.js";
+import { getPsiAndGrad } from "./getPsi.js";
+import { makeVelocityTexture, makeScalarTexture, createFlowParticles, writeVelocityToTexture, writeScalarToTexture, getDisplayedHeight } from "./vectorField.js";
 
 
 const {scene, camera, renderer, controls, dir1, dir2, point, point2} = setUpScene()
@@ -156,7 +158,7 @@ function updateSurface(N, d, sigma, k0, t) {
 
       // probability density:
     //   height[i] = (re * re + im * im)*10000;
-      height[i] = im*4000;
+      height[i] = im*400;
     }
   }
 
@@ -282,6 +284,10 @@ camButton.addEventListener('click', () => {
     printToConsole(camera)
 })
 
+let printToConsole = (camera) => {
+    console.log(camera)
+}
+
 const topViewButton = document.getElementById('topViewBtn')
 topViewButton.addEventListener('click', () => {
     moveCamera(camera, getTopViewQuaternion(point.position),point.position.clone().add(new THREE.Vector3(0, 2, 0)))
@@ -349,13 +355,14 @@ const clock = new THREE.Clock()
 
 let paused = false
 
-const N = 512
-const d = 1
-const sigma = 0.125
-const k0 = .5
+const N = 256
+const d = 1.5
+const sigma = 0.225
+const k0 = 5
+const particleCount = 86400;
 
 const surface = initSurface(N, d, sigma, k0, true);
-const { mesh } = createSurfaceMesh(surface, 0xfc4120);
+const { mesh } = createSurfaceMesh(surface, 0xe152542);
 
 scene.add(mesh);
 
@@ -423,22 +430,49 @@ async function main() {
 
 main();
 
+let now = 0
+
+// const Np = 512;
+
+
+// const { data: velData, tex: velocityTex } = makeVelocityTexture(N);
+// // optional height texture if you want particles hovering above the surface
+// const { data: heightData, tex: heightTex } = makeScalarTexture(N);
+
+// const flow = createFlowParticles(particleCount, 10, velocityTex, heightTex);
+// scene.add(flow);
+
 // -----------------------------
 // Render loop
 // -----------------------------
 function animate(timeMs) {
 
-    let t=0
-    if(!paused) {
-        t = timeMs * 0.0001;
+    now += 0.001
+    const t = now
+
+    if(paused) {
+        now = 0
+        paused = !paused
     }
-    const surface = updateSurface(N, d, sigma, k0, t);
-    console.log(surface)
-    applySurfaceToMesh(mesh, surface)
+
+    const surface = updateSurface(N,d,sigma,k0,t)
+    applySurfaceToMesh(mesh,surface)
+
+    // const field = getPsiAndGrad(N, d, sigma, k0, t); // your function
+    // writeVelocityToTexture(field.vel, velData);
+    // velocityTex.needsUpdate = true;
+
+    // // if you want particles to follow the surface vertically too:
+    // const height = getDisplayedHeight(surface);
+    // writeScalarToTexture(height, heightData);
+    // heightTex.needsUpdate = true;
+
+    // flow.material.uniforms.uTime.value = t;
+
     renderer.render(scene, camera);
     requestAnimationFrame(animate);
 
-    controls.update();
+    // controls.update();
     renderer.render(scene, camera);
 }
 animate();
