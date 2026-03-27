@@ -126,13 +126,14 @@ function updateSurface(N, d, sigma, k0, t) {
   const height = new Float32Array(size);
   const complex = new Float32Array(size * 2);
 
-  // centers
+  const gradX = new Float32Array(size * 2);
+  const gradY = new Float32Array(size * 2);
+
   const x1 = -d / 2, y1 = 0;
   const x2 =  d / 2, y2 = 0;
 
-  // choose whether the second packet moves oppositely
-  const k1 =  k0;
-  const k2 = k0;
+  const omega = k0 * k0; // simple dispersion
+  const v = k0;
 
   let i = 0;
 
@@ -142,82 +143,81 @@ function updateSurface(N, d, sigma, k0, t) {
     for (let ix = 0; ix < N; ix++, i++) {
       const x = (ix / (N - 1) - 0.5) * L;
 
-      const [re1, im1] = evolvedPacket(x, y, t, x1, y1, sigma, k1);
-      const [re2, im2] = evolvedPacket(x, y, t, x2, y2, sigma, k2);
+      const p1 = slitContribution(x, y, t, x1, y1, sigma, k0, omega, v);
+      const p2 = slitContribution(x, y, t, x2, y2, sigma, k0, omega, v);
 
-      // normalized 2-packet superposition
-      const re = (re1 + re2) * Math.SQRT1_2;
-      const im = (im1 + im2) * Math.SQRT1_2;
+      // superposition
+      const re = p1.re + p2.re;
+      const im = p1.im + p2.im;
+
+      const dxRe = p1.dxRe + p2.dxRe;
+      const dxIm = p1.dxIm + p2.dxIm;
+
+      const dyRe = p1.dyRe + p2.dyRe;
+      const dyIm = p1.dyIm + p2.dyIm;
 
       complex[2 * i] = re;
       complex[2 * i + 1] = im;
 
-      // Z-height choice:
-      // real part:
-      // height[i] = re;
+      gradX[2 * i] = dxRe;
+      gradX[2 * i + 1] = dxIm;
 
-      // probability density:
-    //   height[i] = (re * re + im * im)*10000;
-      height[i] = im*400;
+      gradY[2 * i] = dyRe;
+      gradY[2 * i + 1] = dyIm;
+
+      height[i] = (re * re + im * im) *40;
+    //   height[i] = im*30;
     }
   }
 
-  return { height, complex, N, L };
+  return { height, complex, gradX, gradY, N, L };
 }
 
 
 
-function evolvedPacket(x, y, t, x0, y0, sigma, k) {
-  // a = 1 + i t/sigma^2
-  const ai_re = 1.0;
-  const ai_im = t / (sigma * sigma);
-
-  // 1 / a
-  const denomA = ai_re * ai_re + ai_im * ai_im;
-  const invA_re = ai_re / denomA;
-  const invA_im = -ai_im / denomA;
-
-  // prefactor = 1 / (sqrt(pi) sigma a)
-  const pref_re = (1 / (Math.sqrt(Math.PI) * sigma)) * invA_re;
-  const pref_im = (1 / (Math.sqrt(Math.PI) * sigma)) * invA_im;
-
-  // shifted coordinates from your screenshot
-//   const dx = x - x0 - k * t;
-  const dy = y - y0 - k * t;
+function slitContribution(x, y, t, x0, y0, sigma, k, omega, v) {
   const dx = x - x0;
-//   const dy = y - y0;
-  const r2 = dx * dx + dy * dy;
-//   const r2 = dx * dx;
+  const dy = y - y0;
 
-  // gaussian exponent:
-  // - r2 / (2 sigma^2 a)
-  const c = -r2 / (2 * sigma * sigma);
-  const gaussExp_re = c * invA_re;
-  const gaussExp_im = c * invA_im;
+  const r = Math.hypot(dx, dy);
+  const safeR = Math.max(r, 1e-6);
 
-  const gaussMag = Math.exp(gaussExp_re);
-  const gauss_re = gaussMag * Math.cos(gaussExp_im);
-  const gauss_im = gaussMag * Math.sin(gaussExp_im);
+  const phase = k * r - omega * t;
+  const cos = Math.cos(phase);
+  const sin = Math.sin(phase);
 
-  // phase exponent from screenshot:
-  // i k ((x-x0) + (y-y0)) - i k^2 t
+  // envelope
+  const dr = r - v * t;
+  const env = Math.exp(-(dr * dr) / (2 * sigma * sigma));
 
-  const r = Math.sqrt((x - x0)**2 + (y - y0)**2)
+  const re = env * cos;
+  const im = env * sin;
 
-//   const theta = k * ((x - x0) + (y - y0)) - k * k * t;
-  const theta = k*r;
-  const phase_re = Math.cos(theta);
-  const phase_im = Math.sin(theta);
+  // --- gradient components ---
 
-  // multiply: pref * gauss * phase
-  const pg_re = pref_re * gauss_re - pref_im * gauss_im;
-  const pg_im = pref_re * gauss_im + pref_im * gauss_re;
+  // envelope derivative dA/dr
+  const dAdr = -(dr) / (sigma * sigma);
 
-  const re = pg_re * phase_re - pg_im * phase_im;
-  const im = pg_re * phase_im + pg_im * phase_re;
+  // radial unit vector
+  const rx = dx / safeR;
+  const ry = dy / safeR;
 
-  return [re, im];
+  // total log-derivative:
+  // (dAdr + i k)
+  const C_re = dAdr;
+  const C_im = k;
+
+  // ∂Ψ/∂x = (C * Ψ) * (x/r)
+  const dxRe = (C_re * re - C_im * im) * rx;
+  const dxIm = (C_re * im + C_im * re) * rx;
+
+  // ∂Ψ/∂y
+  const dyRe = (C_re * re - C_im * im) * ry;
+  const dyIm = (C_re * im + C_im * re) * ry;
+
+  return { re, im, dxRe, dxIm, dyRe, dyIm };
 }
+
 
 
 function applySurfaceToMesh(mesh, surfaceData) {
@@ -356,13 +356,14 @@ const clock = new THREE.Clock()
 let paused = false
 
 const N = 256
-const d = 1.5
-const sigma = 0.225
+const d = 5
+const sigma = 1.525
 const k0 = 5
-const particleCount = 86400;
+const dt = 0.01
 
 const surface = initSurface(N, d, sigma, k0, true);
-const { mesh } = createSurfaceMesh(surface, 0xe152542);
+// const { mesh } = createSurfaceMesh(surface, 0xBDE395);
+const { mesh } = createSurfaceMesh(surface, 0x458563);
 
 scene.add(mesh);
 
@@ -430,7 +431,7 @@ async function main() {
 
 main();
 
-let now = 0
+let now = -.5 * sigma
 
 // const Np = 512;
 
@@ -447,11 +448,11 @@ let now = 0
 // -----------------------------
 function animate(timeMs) {
 
-    now += 0.001
+    now += dt
     const t = now
 
     if(paused) {
-        now = 0
+        now = -.5 *sigma
         paused = !paused
     }
 
