@@ -16,7 +16,7 @@ const {scene, camera, renderer, controls, dir1, dir2, point, point2} = setUpScen
 function initSurface(N, d, sigma, k0, real, squared) {
   const size = N * N;
 
-  const L = 1000;
+  const L = 10;
   const dx = L / (N - 1);
 
   const r1x = -d / 2;
@@ -189,6 +189,9 @@ function slitContribution(x, y, t, x0, y0, sigma, k, omega, v) {
   // envelope
   const dr = r - v * t;
   const env = Math.exp(-(dr * dr) / (2 * sigma * sigma));
+//   const env = Math.exp(-(dr * dr) / (2 * (sigma * 5)**2));
+//   const env = 1;
+//   const env = exp(-(r^2)/(2sigma^2));
 
   const re = env * cos;
   const im = env * sin;
@@ -216,6 +219,62 @@ function slitContribution(x, y, t, x0, y0, sigma, k, omega, v) {
   const dyIm = (C_re * im + C_im * re) * ry;
 
   return { re, im, dxRe, dxIm, dyRe, dyIm };
+}
+
+function psiAndGradAt(x, y, t, d, sigma, k0) {
+  const x1 = -d / 2, y1 = 0;
+  const x2 =  d / 2, y2 = 0;
+
+
+  const omega = k0 * k0;
+  const v = k0;
+
+  const p1 = slitContribution(x, y, t, x1, y1, sigma, k0, omega, v);
+  const p2 = slitContribution(x, y, t, x2, y2, sigma, k0, omega, v);
+
+
+  return {
+    re: p1.re + p2.re,
+    im: p1.im + p2.im,
+
+    dxRe: p1.dxRe + p2.dxRe,
+    dxIm: p1.dxIm + p2.dxIm,
+
+    dyRe: p1.dyRe + p2.dyRe,
+    dyIm: p1.dyIm + p2.dyIm
+  };
+}
+
+function compressVelocity(vx, vy, vmax = 2000000, vscale = 2000000) {
+  const mag = Math.hypot(vx, vy);
+
+  if (mag < 1e-12) {
+    return { vx: 0, vy: 0 };
+  }
+
+  const compressedMag = vmax * Math.tanh(mag / vscale);
+  const s = compressedMag / mag;
+
+  return {
+    vx: vx * s,
+    vy: vy * s
+  };
+}
+
+function velocityAt(x, y, t, d, sigma, k0, eps = 1e-8, vmax = 2000, vscale = 2000) {
+  const p = psiAndGradAt(x, y, t, d, sigma, k0);
+
+  const denom = p.re * p.re + p.im * p.im + eps;
+
+  let vx = (p.dxIm * p.re - p.dxRe * p.im) / denom;
+  let vy = (p.dyIm * p.re - p.dyRe * p.im) / denom;
+
+    // let vx = (p.re * (-p.dxIm) + p.im * p.dxRe) / denom
+    // let vy = (p.re * (-p.dyIm) + p.im * p.dyRe) / denom
+//   let vx = p.dxIm *p.re / denom;
+//   let vy = p.dyIm *p.re / denom;
+
+  return compressVelocity(vx, vy, vmax, vscale);
 }
 
 
@@ -356,16 +415,92 @@ const clock = new THREE.Clock()
 let paused = false
 
 const N = 256
-const d = 5
-const sigma = 1.525
-const k0 = 5
+const d = 10
+const sigma = 2.525
+const k0 = 10
 const dt = 0.01
+const numParticles = 100
 
 const surface = initSurface(N, d, sigma, k0, true);
 // const { mesh } = createSurfaceMesh(surface, 0xBDE395);
 const { mesh } = createSurfaceMesh(surface, 0x458563);
 
-scene.add(mesh);
+// scene.add(mesh);
+
+function psiDensityAt(x, y, t, d, sigma, k0) {
+  const p = psiAndGradAt(x, y, t, d, sigma, k0);
+  return p.re * p.re + p.im * p.im;
+}
+
+function estimateMaxDensity(t0, d, sigma, k0, L, samples = 5000) {
+  let maxRho = 0;
+
+  for (let i = 0; i < samples; i++) {
+    const x = (Math.random() - 0.5) * L;
+    const y = (Math.random() - 0.5) * L;
+    const rho = psiDensityAt(x, y, t0, d, sigma, k0);
+    if (rho > maxRho) maxRho = rho;
+  }
+
+  return maxRho;
+}
+
+function samplePositionFromPsi2(t0, d, sigma, k0, L, maxRho) {
+  while (true) {
+    const x = (Math.random() - 0.5) * L/3;
+    const y = (Math.random() - 0.5) * L/3;
+
+    const rho = psiDensityAt(x, y, t0, d, sigma, k0);
+
+    if (Math.random() * maxRho < rho) {
+      return { x, y };
+    }
+  }
+}
+
+function seedParticlesFromPsi2(scene, particles, numParticles, t0, d, sigma, k0, L) {
+  const maxRho = estimateMaxDensity(t0, d, sigma, k0, L);
+
+  for (let i = 0; i < numParticles; i++) {
+    const geometry = new THREE.SphereGeometry(.05, 16, 16);
+    const material = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const sphere = new THREE.Mesh(geometry, material);
+
+    const { x, y } = samplePositionFromPsi2(t0, d, sigma, k0, L, maxRho);
+
+    sphere.position.set(x, y, 0);
+    trajectories.push([[x,y]])
+    scene.add(sphere);
+    particles.push(sphere);
+  }
+}
+
+let particles = []
+let trajectories = []
+seedParticlesFromPsi2(scene, particles, numParticles, 0, d, sigma, k0, 10);
+
+// for(let i=0; i<numParticles; i++) {
+//     const geometry = new THREE.SphereGeometry( .1, 16, 8 );
+//     const material = new THREE.MeshBasicMaterial( { color: 0xffffff } );
+//     const sphere = new THREE.Mesh( geometry, material );
+//     let x,y
+//     if(i%2 == 0) {
+//         x = d/2 + (Math.random() -.5) *2.5 
+//         y = (Math.random() -.5) *.5
+//         sphere.position.set(x,y,200)
+//     } else {
+//         x = -d/2 + (Math.random() -.5) *2.5
+//         y = (Math.random() -.5) *.5
+//         sphere.position.set(x,y,200)
+//     }
+    
+//     trajectories.push([[x,y]])
+//     scene.add( sphere );
+//     particles.push(sphere)
+// }
+
+
+
 
 async function main() {
   try {
@@ -419,7 +554,7 @@ async function main() {
     controls.update();
 
     scene.updateMatrixWorld(true)
-    mesh.updateMatrixWorld(true)
+    // mesh.updateMatrixWorld(true)
 
   } catch (err) {
     console.error(err);
@@ -431,7 +566,25 @@ async function main() {
 
 main();
 
-let now = -.5 * sigma
+// let now = -.5 * sigma
+let now = 0
+let tMax = 2
+let drawn = false
+let storePoint = 0
+let storedPoint = false
+
+function lineTo(x0, y0, x1, y1, color = 0xffffff) {
+  const points = [
+    new THREE.Vector3(x0, y0, 0),
+    new THREE.Vector3(x1, y1, 0)
+  ];
+
+  const geometry = new THREE.BufferGeometry().setFromPoints(points);
+
+  const material = new THREE.LineBasicMaterial({ color });
+
+  return new THREE.Line(geometry, material);
+}
 
 // const Np = 512;
 
@@ -448,16 +601,62 @@ let now = -.5 * sigma
 // -----------------------------
 function animate(timeMs) {
 
+    storePoint++
     now += dt
-    const t = now
+    if(now <tMax) {
+        const t = now
+
 
     if(paused) {
-        now = -.5 *sigma
+        // now = -.005 *sigma
+        now = 0
         paused = !paused
     }
 
     const surface = updateSurface(N,d,sigma,k0,t)
     applySurfaceToMesh(mesh,surface)
+
+    for(let i=0; i<particles.length; i++) {
+        const p = particles[i].position;
+
+        const v1 = velocityAt(p.x, p.y, t, d, sigma, k0);
+
+        const midX = p.x + 0.5 * dt * v1.vx;
+        const midY = p.y + 0.5 * dt * v1.vy;
+
+        const v2 = velocityAt(midX, midY, t + 0.5 * dt, d, sigma, k0);
+
+        p.x += dt * v2.vx;
+        p.y += dt * v2.vy;
+        // const speed = Math.hypot(v2.vx, v2.vy);
+
+        // normalize (tune this)
+        // const maxSpeed = 5;
+        // const tc = Math.min(speed / maxSpeed, 1);
+
+        // // map to color (blue → red)
+        // const color = new THREE.Color();
+        // color.setHSL((1 - tc) * 0.7, 1.0, 0.5);
+
+        // p.material.color.copy(color);
+        if(storePoint == 1) {
+            trajectories[i].push([p.x,p.y])
+            storedPoint = true
+        }
+      }
+    if(storedPoint) {
+        storePoint = 0
+        storedPoint = false
+    }
+} else if(!drawn) {
+    for(let i=0; i<trajectories.length;i++) {
+        for(let j=0; j<trajectories[i].length -1; j++) {
+            const line = lineTo(trajectories[i][j][0],trajectories[i][j][1], trajectories[i][j+1][0], trajectories[i][j+1][1])
+            scene.add(line)
+        }
+    }
+    drawn = true
+}
 
     // const field = getPsiAndGrad(N, d, sigma, k0, t); // your function
     // writeVelocityToTexture(field.vel, velData);

@@ -6,17 +6,17 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 // -----------------------------
 export function setUpScene() {
   const scene = new THREE.Scene();
-  const bgColor = 0xE1F0D2
+  const bgColor = 0x458563
   scene.background = new THREE.Color(bgColor);
   // scene.background = new THREE.Color(0x88ABBE);
 
-  const camera = new THREE.PerspectiveCamera();
   // const camera = new THREE.PerspectiveCamera();
-  camera.near = 0.1
+  const camera = new THREE.OrthographicCamera();
+  camera.near = -1000000
   // camera.position.set(1135, 0, -1077);
-  camera.position.set(0, 0, 1300);
+  camera.position.set(0, 0, 10);
   camera.rotation.set(-3,0.8,3.1)
-  camera.zoom = .0095
+  camera.zoom = .05
   scene.add( camera );
 
   const renderer = new THREE.WebGLRenderer({ antialias: true });
