@@ -415,17 +415,17 @@ const clock = new THREE.Clock()
 let paused = false
 
 const N = 256
-const d = 10
+const d = 3
 const sigma = 2.525
 const k0 = 10
-const dt = 0.01
+const dt = 1e-2
 const numParticles = 100
 
 const surface = initSurface(N, d, sigma, k0, true);
 // const { mesh } = createSurfaceMesh(surface, 0xBDE395);
 const { mesh } = createSurfaceMesh(surface, 0x458563);
 
-// scene.add(mesh);
+scene.add(mesh);
 
 function psiDensityAt(x, y, t, d, sigma, k0) {
   const p = psiAndGradAt(x, y, t, d, sigma, k0);
@@ -447,8 +447,8 @@ function estimateMaxDensity(t0, d, sigma, k0, L, samples = 5000) {
 
 function samplePositionFromPsi2(t0, d, sigma, k0, L, maxRho) {
   while (true) {
-    const x = (Math.random() - 0.5) * L/3;
-    const y = (Math.random() - 0.5) * L/3;
+    const x = (Math.random() - 0.5) * L;
+    const y = (Math.random() - 0.5) * L;
 
     const rho = psiDensityAt(x, y, t0, d, sigma, k0);
 
@@ -511,7 +511,7 @@ async function main() {
     // Adjust this if your z range is too dramatic
     const zScale = 1.0;
 
-    // const surface = initSurface(N, d, sigma, k0, true);
+    const surface = initSurface(N, d, sigma, k0, true);
     // const { mesh } = createSurfaceMesh(surface);
 
     // scene.add(mesh);
@@ -568,7 +568,7 @@ main();
 
 // let now = -.5 * sigma
 let now = 0
-let tMax = 2
+let tMax = 1.5
 let drawn = false
 let storePoint = 0
 let storedPoint = false
@@ -628,6 +628,7 @@ function animate(timeMs) {
 
         p.x += dt * v2.vx;
         p.y += dt * v2.vy;
+    
         // const speed = Math.hypot(v2.vx, v2.vy);
 
         // normalize (tune this)
@@ -639,7 +640,7 @@ function animate(timeMs) {
         // color.setHSL((1 - tc) * 0.7, 1.0, 0.5);
 
         // p.material.color.copy(color);
-        if(storePoint == 1) {
+        if(storePoint == 10) {
             trajectories[i].push([p.x,p.y])
             storedPoint = true
         }
