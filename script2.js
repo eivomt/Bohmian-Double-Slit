@@ -146,6 +146,8 @@ function onUp(e) {
 function onMove(e) {
   const svg = document.getElementById('trajectory')
 
+  let createdPaths = []
+
   let strokeWidth, stroke, blurValue, disappears
   const duration = .5
 
@@ -187,6 +189,8 @@ function onMove(e) {
     // const path = getTrajectory(e.clientX, e.clientY,0, d, sigma, k0, "#fff", 8, 0)
     path.setAttribute("stroke-linecap", "round");
     path.setAttribute("stroke-linejoin", "round");
+    createdPaths.push(path)
+
 
     svg.appendChild(path)
 
@@ -211,7 +215,13 @@ function onMove(e) {
         ease: "expo.in"
       });
     }
+
+
   }
+
+  setTimeout(() => {
+    createdPaths.forEach(path => path.remove());
+  }, duration * 1000 + 150);
 
 
 }
