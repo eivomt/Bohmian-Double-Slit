@@ -2,7 +2,7 @@ html, body {
     margin: 0;
     height: 100%;
     overflow: hidden;
-    background: #152542;
+    background-color: #050B14;
     font-family: sans-serif;
 }
 
@@ -67,4 +67,12 @@ button:hover {
 
 .controls {
     display: none;
+}
+
+#trajectory {
+    width: 100vw;
+    height: 100vh;
+    position: absolute;
+    top: 0;
+    left: 0;
 }
