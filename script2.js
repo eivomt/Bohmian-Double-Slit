@@ -88,7 +88,7 @@ function psiAndGradAt(x, y, t, d, sigma, k0) {
   };
 }
 
-function compressVelocity(vx, vy, vmax = 20000, vscale = 20000) {
+function compressVelocity(vx, vy, vmax = 10, vscale = 10) {
   const mag = Math.hypot(vx, vy);
 
   if (mag < 1e-12) {
@@ -104,7 +104,7 @@ function compressVelocity(vx, vy, vmax = 20000, vscale = 20000) {
   };
 }
 
-function velocityAt(x, y, t, d, sigma, k0, eps = 1e-8, vmax = 2000, vscale = 2000) {
+function velocityAt(x, y, t, d, sigma, k0, eps = 1e-2, vmax = 1000, vscale = 1000) {
   const p = psiAndGradAt(x, y, t, d, sigma, k0);
 
   const denom = p.re * p.re + p.im * p.im + eps;
@@ -123,12 +123,10 @@ function velocityAt(x, y, t, d, sigma, k0, eps = 1e-8, vmax = 2000, vscale = 200
 
 let paused = false
 
-const N = 256
 const d = 4
 const sigma = 2.525
 const k0 = 10
 const dt = 1e-2
-const numParticles = 100
 
 
 window.addEventListener("pointerdown", onDown)
@@ -149,7 +147,7 @@ function onMove(e) {
   let createdPaths = []
 
   let strokeWidth, stroke, blurValue, disappears
-  const duration = .5
+  const duration = .75
 
   for (let i=0; i<5; i++) {
     switch(i) {
@@ -186,6 +184,7 @@ function onMove(e) {
     }
 
     const path = getTrajectory(scaleX(e.clientX), scaleY(e.clientY),0, d, sigma, k0, stroke, strokeWidth, blurValue)
+    // const path = getTrajectory(scaleX(e.clientX), .5,0, d, sigma, k0, stroke, strokeWidth, blurValue)
     // const path = getTrajectory(e.clientX, e.clientY,0, d, sigma, k0, "#fff", 8, 0)
     path.setAttribute("stroke-linecap", "round");
     path.setAttribute("stroke-linejoin", "round");
@@ -195,33 +194,47 @@ function onMove(e) {
     svg.appendChild(path)
 
     const length = path.getTotalLength();
-    gsap.set(path, { strokeDasharray: length, strokeDashoffset: length });
-    gsap.to(path, { strokeDashoffset: 0, duration: duration, ease: "elastic.in"});
+    gsap.set(path, { 
+      strokeDasharray: length,
+      strokeDashoffset: length 
+    });
+    gsap.to(path, { 
+      strokeDashoffset: 0, 
+      duration: duration, 
+      ease: "elastic.in",
+      immediateRender: true
+    });
     gsap.to(path, {
       filter: "blur(1px)",
       duration: duration + .15,
-      ease: "elastic.in"
+      ease: "elastic.in",
+      immediateRender: true
     });
     if (disappears) {
       gsap.to(path, {
         opacity: 0,
         duration: duration + .15,
-        ease: "expo.in"
+        ease: "expo.in",
+        immediateRender: true
       });
     } else {
       gsap.to(path, {
         opacity: 0.0,
         duration: duration + .15,
-        ease: "expo.in"
+        ease: "expo.in",
+        immediateRender: true
       });
     }
 
 
   }
 
+  // setTimeout(() => {
+  //   createdPaths.forEach(path => path.remove());
+  // }, duration * 1000 + 250);
   setTimeout(() => {
     createdPaths.forEach(path => path.remove());
-  }, duration * 1000 + 150);
+  }, duration * 1000 + 250);
 
 
 }
@@ -246,18 +259,17 @@ let pixelValueY = (y) => {
   return window.innerHeight - (y + 10) * (window.innerHeight/20)
 }
 
-console.log(window.innerHeight)
 
 
 
 let getTrajectory = (x,y,t,d,sigma,k0,stroke,strokeWidth,blurValue) => {
-  console.log(y)
-  console.log(pixelValueY(y))
-
   let position = [x,y]
   let dString = ""
+  let steps = 0
+  const MAX_STEPS = 10000
 
-  while(position[0] < 10 && position[0] > -10) {
+  while(position[0] < 10 && position[0] > -10 && steps < MAX_STEPS) {
+    steps++
     const v1 = velocityAt(position[0], position[1], t, d, sigma, k0);
 
     const midX = position[0] + 0.5 * dt * v1.vx;
@@ -268,7 +280,9 @@ let getTrajectory = (x,y,t,d,sigma,k0,stroke,strokeWidth,blurValue) => {
     const px = pixelValueX(position[0])
     const py = pixelValueY(position[1])
 
-    dString += (dString == "" ? "M" : "L") + `${px},${py} `
+    if (steps%2 == 0 || steps == 0) {
+      dString += (dString == "" ? "M" : "L") + `${px},${py}`
+    }
 
     position[0] += v2.vx * dt
     position[1] += v2.vy * dt
