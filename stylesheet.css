@@ -69,10 +69,31 @@ button:hover {
     display: none;
 }
 
+.display {
+    position: relative;
+}
+
 #trajectory {
-    width: 100vw;
+    width: 100vh;
     height: 100vh;
     position: absolute;
     top: 0;
     left: 0;
+}
+
+#staticDiagram {
+    width: 100vh;
+    height: 100vh;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+.measurements {
+    background-color: red;
+    width: calc(100vw - 100vh);
+    height: 100vh;
+    position: absolute;
+    top: 0;
+    left: 100vh;
 }

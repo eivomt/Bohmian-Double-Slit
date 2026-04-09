@@ -65,8 +65,8 @@ function slitContribution(x, y, t, x0, y0, sigma, k, omega, v) {
 }
 
 function psiAndGradAt(x, y, t, d, sigma, k0) {
-  const x1 = -d / 2, y1 = 0;
-  const x2 =  d / 2, y2 = 0;
+  const x1 = 0, y1 = -d / 2;
+  const x2 =  0, y2 = d / 2;
 
 
   const omega = k0 * k0;
@@ -104,7 +104,7 @@ function compressVelocity(vx, vy, vmax = 10, vscale = 10) {
   };
 }
 
-function velocityAt(x, y, t, d, sigma, k0, eps = 1e-2, vmax = 1000, vscale = 1000) {
+function velocityAt(x, y, t, d, sigma, k0, eps = 1e-4, vmax = 1000, vscale = 1000) {
   const p = psiAndGradAt(x, y, t, d, sigma, k0);
 
   const denom = p.re * p.re + p.im * p.im + eps;
@@ -123,10 +123,11 @@ function velocityAt(x, y, t, d, sigma, k0, eps = 1e-2, vmax = 1000, vscale = 100
 
 let paused = false
 
-const d = 4
+const d = 5
 const sigma = 2.525
 const k0 = 10
 const dt = 1e-2
+const L = 10
 
 
 window.addEventListener("pointerdown", onDown)
@@ -186,8 +187,6 @@ function onMove(e) {
     const path = getTrajectory(scaleX(e.clientX), scaleY(e.clientY),0, d, sigma, k0, stroke, strokeWidth, blurValue)
     // const path = getTrajectory(scaleX(e.clientX), .5,0, d, sigma, k0, stroke, strokeWidth, blurValue)
     // const path = getTrajectory(e.clientX, e.clientY,0, d, sigma, k0, "#fff", 8, 0)
-    path.setAttribute("stroke-linecap", "round");
-    path.setAttribute("stroke-linejoin", "round");
     createdPaths.push(path)
 
 
@@ -202,27 +201,27 @@ function onMove(e) {
       strokeDashoffset: 0, 
       duration: duration, 
       ease: "elastic.in",
-      immediateRender: true
+      immediateRender: false
     });
     gsap.to(path, {
       filter: "blur(1px)",
       duration: duration + .15,
       ease: "elastic.in",
-      immediateRender: true
+      immediateRender: false
     });
     if (disappears) {
       gsap.to(path, {
         opacity: 0,
         duration: duration + .15,
         ease: "expo.in",
-        immediateRender: true
+        immediateRender: false
       });
     } else {
       gsap.to(path, {
         opacity: 0.0,
         duration: duration + .15,
         ease: "expo.in",
-        immediateRender: true
+        immediateRender: false
       });
     }
 
@@ -295,10 +294,283 @@ let getTrajectory = (x,y,t,d,sigma,k0,stroke,strokeWidth,blurValue) => {
   path.setAttribute("stroke", stroke);
   path.setAttribute("opacity", ".9");
   path.setAttribute("stroke-width", strokeWidth);
+  path.setAttribute("stroke-linecap", "round");
+  path.setAttribute("stroke-linejoin", "round");
   path.style.filter = `blur(${blurValue}px)`
 
   return path;
+}
 
+function velocityRaw(x, y, t, d, sigma, k0, eps = 1e-2) {
+  const p = psiAndGradAt(x, y, t, d, sigma, k0);
+  const denom = p.re*p.re + p.im*p.im + eps;
+
+  return {
+    vx: (p.dxIm * p.re - p.dxRe * p.im) / denom,
+    vy: (p.dyIm * p.re - p.dyRe * p.im) / denom
+  };
 }
 
 
+let jxPlus = (L, y, t, d, sigma, k0) => {
+  const p = psiAndGradAt(L, y, t, d, sigma, k0)
+  const rho = p.re * p.re + p.im * p.im
+
+  const v = velocityRaw(L, y, t, d, sigma, k0)
+
+  return Math.max(0, rho * v.vx)
+}
+
+let getDetectionEvent = ({L, tMin, tMax, tSteps, yMin, yMax, ySteps, d, sigma, k0}) => {
+  const dt = (tMax - tMin) / (tSteps - 1)
+  const dy = (yMax - yMin) / (ySteps - 1)
+
+  const weights = []
+  let total = 0
+
+  for (let i = 0; i < tSteps; i++) {
+    const t = tMin + i * dt
+
+    for (let j = 0; j < ySteps; j++) {
+      const y = yMin + j * dy
+
+      const w = jxPlus(L, y, t, d, sigma, k0)
+      weights.push({ y, t, w })
+
+      total += w
+    }
+  }
+
+  let r = Math.random() * total
+
+  for (const item of weights) {
+    r -= item.w
+    if (r <= 0) {
+      return { y: item.y, t: item.t }
+    }
+  }
+
+  return weights[weights.length - 1]
+}
+
+let getBackwardTrajectory = (x, y, t, d, sigma, k0, stroke, strokeWidth, blurValue, xStop = 0) => {
+  let position = [x, y]
+  let dString = ""
+  let steps = 0
+  const MAX_STEPS = 10000
+
+  const h = -1 * dt
+
+  while (
+    position[0] <= 10 &&
+    position[0] >= -10 &&
+    position[1] <= 10 &&
+    position[1] >= -10 &&
+    // t > 0 &&
+    position[0] > xStop &&
+    steps < MAX_STEPS
+  ) {
+    steps++
+
+    const px = pixelValueX(position[0])
+    const py = pixelValueY(position[1])
+
+    if (steps % 2 === 0 || steps === 1) {
+      dString += (dString === "" ? "M" : "L") + `${px},${py}`
+    }
+
+    const v1 = velocityAt(position[0], position[1], t, d, sigma, k0)
+
+    const midX = position[0] + 0.5 * h * v1.vx
+    const midY = position[1] + 0.5 * h * v1.vy
+
+    const v2 = velocityAt(midX, midY, t + 0.5 * h, d, sigma, k0)
+
+    position[0] += v2.vx * h
+    position[1] += v2.vy * h
+    t += h
+  }
+
+  if (dString === "") return null
+
+  const path = document.createElementNS("http://www.w3.org/2000/svg", "path")
+  path.setAttribute("d", dString.trim())
+  path.setAttribute("fill", "none")
+  path.setAttribute("stroke", stroke)
+  path.setAttribute("opacity", ".9")
+  path.setAttribute("stroke-width", strokeWidth)
+  path.setAttribute("stroke-linecap", "round");
+  path.setAttribute("stroke-linejoin", "round");
+  path.style.filter = `blur(${blurValue}px)`
+
+  return path
+};
+
+async function burst(N) {
+  return new Promise((resolve) => {
+    const svg = document.getElementById('trajectory')
+    let paths=[]
+
+
+
+    for (let i = 0; i<N; i++) {
+      const event = getDetectionEvent({
+        L: L,
+        tMin: -2 * sigma,
+        // tMin: 0,
+        tMax: (L + 4*sigma) / k0,
+        tSteps: 100,
+        ySteps: 600,
+        yMin: -2 * L,
+        yMax: 2 * L,
+        d: d,
+        sigma: sigma,
+        k0: k0
+      })
+
+      let strokeWidth, stroke, blurValue, disappears
+      const duration = .5
+
+      for (let j = 4; j<5; j++) {
+        switch(j) {
+          case 0:
+          strokeWidth = 128
+          stroke = "#2B536A"
+          blurValue = 128
+          disappears = true
+            break
+          case 1:
+            strokeWidth = 16
+            stroke = "#6D92A6"
+            blurValue = 32
+            disappears = true
+            break
+          case 2:
+            strokeWidth = 8
+            stroke = "#88ABBE"
+            blurValue = 8
+            disappears = true
+            break
+          case 3:
+            strokeWidth = 2
+            stroke = "#94abc1"
+            blurValue = 0
+            disappears = false
+            break
+          case 4:
+            strokeWidth = 1
+            stroke = "#fff"
+            blurValue = 0
+            disappears = false
+            break
+        }
+
+        const path = getBackwardTrajectory(
+          L,
+          event.y,
+          event.t,
+          d,
+          sigma,
+          k0,
+          stroke,
+          strokeWidth,
+          blurValue,
+          0
+        )
+        if (!path) continue
+
+        svg.appendChild(path)
+        paths.push(path)
+
+        const length = path.getTotalLength();
+        gsap.set(path, { 
+          strokeDasharray: length,
+          strokeDashoffset: length 
+        });
+        gsap.to(path, { 
+          strokeDashoffset: 0, 
+          duration: duration, 
+          ease: "elastic.in",
+          immediateRender: false
+        });
+        gsap.to(path, {
+          filter: "blur(1px)",
+          duration: duration + .15,
+          ease: "elastic.in",
+          immediateRender: false
+        });
+        if (disappears) {
+          gsap.to(path, {
+            opacity: 0,
+            duration: duration + .15,
+            ease: "expo.in",
+            immediateRender: false
+          });
+        } else {
+          gsap.to(path, {
+            opacity: 0.8,
+            duration: duration + .15,
+            ease: "expo.in",
+            immediateRender: false
+          });
+        }
+      }
+    }
+    resolve(paths)
+  })
+}
+
+let drawStaticDiagram = (stroke, strokeWidth) => {
+  const maxRadius = Math.sqrt((window.innerHeight/2 - d/2)**2 + L**2)
+  const lambda = 2 * Math.PI / k0
+  const maxIterations = Math.ceil(maxRadius/lambda)
+  const diagram = document.getElementById("staticDiagram")
+  const pixelsPerUnit = window.innerWidth / 20
+
+  for (let i=0; i<maxIterations; i++) {
+    const radius = pixelsPerUnit * lambda * i
+    const cx = window.innerWidth/2
+    const cy1 = d/2 * pixelsPerUnit + window.innerHeight/2 
+    const cy2 = -d/2 * pixelsPerUnit + window.innerHeight/2
+
+    const circle1 = document.createElementNS("http://www.w3.org/2000/svg", "circle")
+    circle1.setAttribute("cx", cx.toString())
+    circle1.setAttribute("cy", cy1.toString())
+    circle1.setAttribute("r", radius.toString())
+    circle1.setAttribute("fill", "none")
+    circle1.setAttribute("stroke", stroke)
+    circle1.setAttribute("strokeWidth", strokeWidth)
+    circle1.setAttribute("opacity", 0.1)
+    diagram.appendChild(circle1)
+
+    const circle2 = document.createElementNS("http://www.w3.org/2000/svg", "circle")
+    circle2.setAttribute("cx", cx.toString())
+    circle2.setAttribute("cy", cy2.toString())
+    circle2.setAttribute("r", radius.toString())
+    circle2.setAttribute("fill", "none")
+    circle2.setAttribute("stroke", stroke)
+    circle2.setAttribute("strokeWidth", strokeWidth)
+    circle2.setAttribute("opacity", 0.1)
+    diagram.appendChild(circle2)
+  }
+}
+
+drawStaticDiagram("#fff", "2")
+
+window.addEventListener('keydown', async function(e) {
+  if(e.key == 'x') {
+    const paths = await burst(20)
+  }
+})
+
+window.addEventListener('keydown', async function(e) {
+  if(e.key == 'c') {
+    const paths = await burst(5)
+  }
+})
+
+window.addEventListener('keydown', async function(e) {
+  if(e.key == 'z') {
+    const paths = await burst(1)
+  }
+})
