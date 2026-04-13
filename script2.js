@@ -125,7 +125,7 @@ let paused = false
 
 const d = 5
 const sigma = 2.525
-const k0 = 10
+const k0 = 8
 const dt = 1e-2
 const L = 10
 
@@ -252,10 +252,10 @@ let scaleX = (x) => {
 }
 
 let pixelValueX = (x) => {
-  return (x + 10) * (window.innerWidth/20)
+  return (x + L) * (window.innerHeight > window.innerWidth ?  (window.innerWidth/20) : (window.innerHeight/20))
 }
 let pixelValueY = (y) => {
-  return window.innerHeight - (y + 10) * (window.innerHeight/20)
+  return window.innerHeight - (y + L) * (window.innerHeight > window.innerWidth ?  (window.innerWidth/20) : (window.innerHeight/20))
 }
 
 
@@ -525,11 +525,11 @@ let drawStaticDiagram = (stroke, strokeWidth) => {
   const lambda = 2 * Math.PI / k0
   const maxIterations = Math.ceil(maxRadius/lambda)
   const diagram = document.getElementById("staticDiagram")
-  const pixelsPerUnit = window.innerWidth / 20
+  const pixelsPerUnit = window.innerHeight > window.innerWidth ? window.innerWidth / 20 : window.innerHeight / 20
 
   for (let i=0; i<maxIterations; i++) {
     const radius = pixelsPerUnit * lambda * i
-    const cx = window.innerWidth/2
+    const cx = window.innerHeight > window.innerWidth ? window.innerWidth/2 : window.innerHeight/2
     const cy1 = d/2 * pixelsPerUnit + window.innerHeight/2 
     const cy2 = -d/2 * pixelsPerUnit + window.innerHeight/2
 

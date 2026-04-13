@@ -90,10 +90,23 @@ button:hover {
 }
 
 .measurements {
-    background-color: red;
+    background-color: #050B14;
+    border-left: 4px solid white;
     width: calc(100vw - 100vh);
     height: 100vh;
     position: absolute;
     top: 0;
     left: 100vh;
 }
+
+.measurement {
+    position: absolute;
+    top: 50vh;
+    left: calc(100vh + 40px);
+    background-color: #fff;
+    width: 2px;
+    height: 2px;
+    border-radius: 50%;
+    z-index: 2;
+}
+
