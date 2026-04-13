@@ -312,18 +312,34 @@ function velocityRaw(x, y, t, d, sigma, k0, eps = 1e-2) {
 }
 
 
-let jxPlus = (L, y, t, d, sigma, k0) => {
-  const p = psiAndGradAt(L, y, t, d, sigma, k0)
+let boundaryFlux = (x, y, t, d, sigma, k0, edge) => {
+  const p = psiAndGradAt(x, y, t, d, sigma, k0)
   const rho = p.re * p.re + p.im * p.im
 
-  const v = velocityRaw(L, y, t, d, sigma, k0)
+  const v = velocityRaw(x, y, t, d, sigma, k0)
 
-  return Math.max(0, rho * v.vx)
-}
+  switch (edge) {
+    case "right":
+      return Math.max(0, rho * v.vx)
+
+    case "left":
+      return Math.max(0, -rho * v.vx)
+
+    case "top":
+      return Math.max(0, rho * v.vy)
+
+    case "bottom":
+      return Math.max(0, -rho * v.vy)
+
+    default:
+      return 0
+  }
+};
 
 let getDetectionEvent = ({L, tMin, tMax, tSteps, yMin, yMax, ySteps, d, sigma, k0}) => {
   const dt = (tMax - tMin) / (tSteps - 1)
   const dy = (yMax - yMin) / (ySteps - 1)
+  const dx = dy
 
   const weights = []
   let total = 0
@@ -333,9 +349,30 @@ let getDetectionEvent = ({L, tMin, tMax, tSteps, yMin, yMax, ySteps, d, sigma, k
 
     for (let j = 0; j < ySteps; j++) {
       const y = yMin + j * dy
+      const x = L
 
-      const w = jxPlus(L, y, t, d, sigma, k0)
-      weights.push({ y, t, w })
+      const w = boundaryFlux(x, y, t, d, sigma, k0, 'right')
+      weights.push({x, y, t, w })
+
+      total += w
+    }
+
+    for(let k=0; k < ySteps/2; k++) {
+      const y = L
+      const x = k*dx
+
+      const w = boundaryFlux(x, y, t, d, sigma, k0, 'top')
+      weights.push({x, y, t, w })
+
+      total += w
+    }
+
+    for(let l=0; l < ySteps/2; l++) {
+      const y = -L
+      const x = l*dx
+
+      const w = boundaryFlux(x, y, t, d, sigma, k0, 'bottom')
+      weights.push({x, y, t, w })
 
       total += w
     }
@@ -346,12 +383,13 @@ let getDetectionEvent = ({L, tMin, tMax, tSteps, yMin, yMax, ySteps, d, sigma, k
   for (const item of weights) {
     r -= item.w
     if (r <= 0) {
-      return { y: item.y, t: item.t }
+      return { x: item.x, y: item.y, t: item.t }
     }
   }
 
   return weights[weights.length - 1]
 }
+
 
 let getBackwardTrajectory = (x, y, t, d, sigma, k0, stroke, strokeWidth, blurValue, xStop = 0) => {
   let position = [x, y]
@@ -421,8 +459,8 @@ async function burst(N) {
         tMax: (L + 4*sigma) / k0,
         tSteps: 100,
         ySteps: 600,
-        yMin: -2 * L,
-        yMax: 2 * L,
+        yMin: -L,
+        yMax: L,
         d: d,
         sigma: sigma,
         k0: k0
@@ -466,7 +504,7 @@ async function burst(N) {
         }
 
         const path = getBackwardTrajectory(
-          L,
+          event.x,
           event.y,
           event.t,
           d,
@@ -483,20 +521,20 @@ async function burst(N) {
         paths.push(path)
 
         const length = path.getTotalLength();
-        gsap.set(path, { 
-          strokeDasharray: length,
-          strokeDashoffset: length 
-        });
-        gsap.to(path, { 
-          strokeDashoffset: 0, 
-          duration: duration, 
-          ease: "elastic.in",
-          immediateRender: false
-        });
+        // gsap.set(path, { 
+        //   strokeDasharray: length,
+        //   strokeDashoffset: length 
+        // });
+        // gsap.to(path, { 
+        //   strokeDashoffset: 0, 
+        //   duration: duration, 
+        //   ease: "elastic.in",
+        //   immediateRender: false
+        // });
         gsap.to(path, {
           filter: "blur(1px)",
           duration: duration + .15,
-          ease: "elastic.in",
+          ease: "expo.in",
           immediateRender: false
         });
         if (disappears) {
@@ -508,7 +546,7 @@ async function burst(N) {
           });
         } else {
           gsap.to(path, {
-            opacity: 0.8,
+            opacity: 1.0,
             duration: duration + .15,
             ease: "expo.in",
             immediateRender: false
@@ -540,8 +578,17 @@ let drawStaticDiagram = (stroke, strokeWidth) => {
     circle1.setAttribute("fill", "none")
     circle1.setAttribute("stroke", stroke)
     circle1.setAttribute("strokeWidth", strokeWidth)
-    circle1.setAttribute("opacity", 0.1)
+    circle1.setAttribute("opacity", 0.2)
     diagram.appendChild(circle1)
+    // gsap.to(circle1, {
+    //   opacity: 0.5,
+    //   duration: 1,
+    //   ease: "expo.inout",
+    //   repeat: -1,
+    //   yoyo: true,
+    //   repeatDelay: 0,
+    //   delay: 0.05 * i
+    // })
 
     const circle2 = document.createElementNS("http://www.w3.org/2000/svg", "circle")
     circle2.setAttribute("cx", cx.toString())
@@ -550,8 +597,18 @@ let drawStaticDiagram = (stroke, strokeWidth) => {
     circle2.setAttribute("fill", "none")
     circle2.setAttribute("stroke", stroke)
     circle2.setAttribute("strokeWidth", strokeWidth)
-    circle2.setAttribute("opacity", 0.1)
+    circle2.setAttribute("opacity", 0.2)
     diagram.appendChild(circle2)
+
+    // gsap.to(circle2, {
+    //   opacity: 0.5,
+    //   duration: 1,
+    //   ease: "expo.inout",
+    //   repeat: -1,
+    //   yoyo: true,
+    //   repeatDelay: 0,
+    //   delay: 0.05 * i
+    // })
   }
 }
 
