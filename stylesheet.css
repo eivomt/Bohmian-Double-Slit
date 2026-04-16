@@ -90,23 +90,66 @@ button:hover {
 }
 
 .measurements {
-    background-color: #050B14;
+    background-color: #051b30;
     border-left: 4px solid white;
     width: calc(100vw - 100vh);
     height: 100vh;
-    position: absolute;
+    position: relative;
     top: 0;
     left: 100vh;
 }
 
 .measurement {
     position: absolute;
-    top: 50vh;
-    left: calc(100vh + 40px);
-    background-color: #fff;
-    width: 2px;
-    height: 2px;
     border-radius: 50%;
     z-index: 2;
+}
+
+.measurement div {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+}
+
+.m1 {
+    border-radius: 50%;
+    background-color: #77a5d8;
+    width: 5px;
+    height: 5px;
+    filter: blur(1.5px);
+}
+
+.m2 {
+    border-radius: 50%;
+    background-color: #32d1df;
+    width: 4px;
+    height: 4px;
+    filter: blur(40px);
+}
+
+.m3 {
+    border-radius: 50%;
+    background-color: #1a6470;
+    width: 8px;
+    height: 8px;
+    filter: blur(128px);
+}
+
+.m4 {
+    border-radius: 50%;
+    background-color: #b7d8e6;
+    width: 2px;
+    height: 2px;
+    filter: blur(1px);
+}
+
+.m5 {
+    border-radius: 50%;
+    background-color: #2B536A;
+    width: 32px;
+    height: 32px;
+    filter: blur(166px);
 }
 

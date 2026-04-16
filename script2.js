@@ -123,9 +123,9 @@ function velocityAt(x, y, t, d, sigma, k0, eps = 1e-4, vmax = 1000, vscale = 100
 
 let paused = false
 
-const d = 5
+const d = 2.5
 const sigma = 2.525
-const k0 = 8
+const k0 = 6
 const dt = 1e-2
 const L = 10
 
@@ -244,11 +244,13 @@ function onMove(e) {
 // const w = window.innerWidth
 
 let scaleY = (y) => {
-  return (-y/(window.innerHeight/10) * 2) + 10
+  return -1 * map(y, 0, window.innerHeight, -L, L,)
 }
 
 let scaleX = (x) => {
-  return (x/(window.innerWidth/10) * 2) - 10
+  // const scaledX = x - (window.innerWidth - window.innerHeight)
+  return map(x, 0, window.innerHeight, -L, L,)
+  // return (x/(window.innerWidth/10) * 2) - 10
 }
 
 let pixelValueX = (x) => {
@@ -256,6 +258,10 @@ let pixelValueX = (x) => {
 }
 let pixelValueY = (y) => {
   return window.innerHeight - (y + L) * (window.innerHeight > window.innerWidth ?  (window.innerWidth/20) : (window.innerHeight/20))
+}
+
+function map(value, inMin, inMax, outMin, outMax) {
+  return outMin + (value - inMin) * (outMax - outMin) / (inMax - inMin);
 }
 
 
@@ -361,7 +367,7 @@ let getDetectionEvent = ({L, tMin, tMax, tSteps, yMin, yMax, ySteps, d, sigma, k
       const y = L
       const x = k*dx
 
-      const w = boundaryFlux(x, y, t, d, sigma, k0, 'top')
+      const w = boundaryFlux(x, y, t, d, sigma, k0, 'top') / 2
       weights.push({x, y, t, w })
 
       total += w
@@ -371,7 +377,7 @@ let getDetectionEvent = ({L, tMin, tMax, tSteps, yMin, yMax, ySteps, d, sigma, k
       const y = -L
       const x = l*dx
 
-      const w = boundaryFlux(x, y, t, d, sigma, k0, 'bottom')
+      const w = boundaryFlux(x, y, t, d, sigma, k0, 'bottom') / 2
       weights.push({x, y, t, w })
 
       total += w
@@ -517,6 +523,8 @@ async function burst(N) {
         )
         if (!path) continue
 
+        if(event.x == L) {detectElectron(100 - ((event.y+10) * 100 / 20))}
+
         svg.appendChild(path)
         paths.push(path)
 
@@ -631,3 +639,38 @@ window.addEventListener('keydown', async function(e) {
     const paths = await burst(1)
   }
 })
+
+let detectElectron = (y) => {
+  const w = window.innerWidth
+  const h = window.innerHeight
+  const measurements = document.querySelector('.measurements')
+  const measurement = document.createElement('div')
+  measurement.classList.add('measurement')
+  measurement.style.top = y.toString() + '%'
+  measurement.style.opacity = '0'
+  // measurement.style.left = w > h ? 'calc(100vh + ' + ((Math.random() * (w - h))/4).toString() + 'px)' : 'calc(100vw + ' + (Math.random() * (h - w)).toString() + 'px)'
+  measurement.style.left = (Math.random() * 100).toString() + '%'
+  const m1 = document.createElement('div')
+  m1.classList.add('m1')
+  measurement.appendChild(m1)
+  const m2 = document.createElement('div')
+  m2.classList.add('m2')
+  measurement.appendChild(m2)
+  const m3 = document.createElement('div')
+  m3.classList.add('m3')
+  measurement.appendChild(m3)
+  const m4 = document.createElement('div')
+  m4.classList.add('m4')
+  measurement.appendChild(m4)
+  // const m5 = document.createElement('div')
+  // m5.classList.add('m5')
+  // measurement.appendChild(m5)
+  measurements.appendChild(measurement)
+  const op = Math.random()/3 + .65
+
+  gsap.to(measurement, {
+    opacity: op,
+    duration: .5,
+    ease: "expo.inout",
+  })
+}
