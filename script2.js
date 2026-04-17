@@ -121,7 +121,7 @@ function velocityAt(x, y, t, d, sigma, k0, eps = 1e-4, vmax = 1000, vscale = 100
 }
 
 
-let paused = false
+let paused = true
 
 const d = 2.5
 const sigma = 2.525
@@ -129,12 +129,18 @@ const k0 = 6
 const dt = 1e-2
 const L = 10
 
-
-window.addEventListener("pointerdown", onDown)
+let firing = false
+window.addEventListener("click", onDown)
 
 function onDown(e) {
-  window.addEventListener("pointermove", onMove)
-  window.addEventListener("pointerup", onUp)
+  if(paused) return
+  if(!firing) {
+    window.addEventListener("pointermove", onMove)
+    window.addEventListener("pointerup", onUp)
+  } else {
+    onUp(e)
+  }
+  firing = !firing
 }
 
 function onUp(e) {
@@ -148,14 +154,14 @@ function onMove(e) {
   let createdPaths = []
 
   let strokeWidth, stroke, blurValue, disappears
-  const duration = .75
+  const duration = 1.25
 
   for (let i=0; i<5; i++) {
     switch(i) {
       case 0:
-        strokeWidth = 128
+        strokeWidth = 32
         stroke = "#2B536A"
-        blurValue = 128
+        blurValue = 64
         disappears = true
         break
       case 1:
@@ -199,20 +205,20 @@ function onMove(e) {
     });
     gsap.to(path, { 
       strokeDashoffset: 0, 
-      duration: duration, 
+      duration: duration - .5, 
       ease: "elastic.in",
       immediateRender: false
     });
     gsap.to(path, {
       filter: "blur(1px)",
-      duration: duration + .15,
+      duration: duration + .65,
       ease: "elastic.in",
       immediateRender: false
     });
     if (disappears) {
       gsap.to(path, {
         opacity: 0,
-        duration: duration + .15,
+        duration: duration - .15,
         ease: "expo.in",
         immediateRender: false
       });
@@ -620,7 +626,7 @@ let drawStaticDiagram = (stroke, strokeWidth) => {
   }
 }
 
-drawStaticDiagram("#fff", "2")
+
 
 window.addEventListener('keydown', async function(e) {
   if(e.key == 'x') {
@@ -674,3 +680,100 @@ let detectElectron = (y) => {
     ease: "expo.inout",
   })
 }
+
+function inPixels(x) {
+  return window.innerHeight * x /20
+}
+
+const drawBarrier = (d, slitWidth = 1) => {
+  const diagram = document.querySelector('#staticDiagram')
+
+  const x = window.innerHeight / 2
+  const centerY = window.innerHeight / 2
+
+  const halfGap = inPixels(d / 2)
+  const halfSlit = inPixels(slitWidth / 2)
+
+  const topSlitTop = centerY - halfGap - halfSlit
+  const topSlitBottom = centerY - halfGap + halfSlit
+
+  const bottomSlitTop = centerY + halfGap - halfSlit
+  const bottomSlitBottom = centerY + halfGap + halfSlit
+
+  const makeLine = (x1, y1, x2, y2) => {
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line')
+    line.setAttribute('x1', x1)
+    line.setAttribute('y1', y1)
+    line.setAttribute('x2', x2)
+    line.setAttribute('y2', y2)
+    line.setAttribute('stroke', 'white')
+    line.setAttribute('stroke-width', '8')
+    line.setAttribute('stroke-linecap', 'round')
+    return line
+  }
+
+  // top barrier
+  diagram.appendChild(
+    makeLine(x, 0, x, topSlitTop)
+  )
+
+  // middle barrier between the two slits
+  diagram.appendChild(
+    makeLine(x, topSlitBottom, x, bottomSlitTop)
+  )
+
+  // bottom barrier
+  diagram.appendChild(
+    makeLine(x, bottomSlitBottom, x, window.innerHeight)
+  )
+}
+
+let drawPlaneWaves = (k0, stroke, strokeWidth) => {
+  const makeLine = (x1, y1, x2, y2) => {
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line')
+    line.setAttribute('x1', x1)
+    line.setAttribute('y1', y1)
+    line.setAttribute('x2', x2)
+    line.setAttribute('y2', y2)
+    line.setAttribute('stroke', stroke)
+    line.setAttribute('stroke-width', strokeWidth)
+    line.setAttribute('stroke-linecap', 'round')
+    line.setAttribute("opacity", 0.2)
+    return line
+  }
+
+  let x = window.innerHeight/2
+  const lambda = inPixels(2 * Math.PI / k0)
+  const diagram = document.querySelector('#staticDiagram')
+
+  while (x > 0) {
+    diagram.appendChild(makeLine(x.toString(), "0", x.toString(), window.innerHeight.toString()))
+    x -= lambda
+  }
+}
+
+const coverLeft = () => {
+  const svg = document.querySelector('#staticDiagram')
+  const body = document.body
+
+  const bg = getComputedStyle(body).backgroundColor
+
+  const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect')
+
+  const h = window.innerHeight
+
+
+  rect.setAttribute('x', 0)
+  rect.setAttribute('y', 0)
+  rect.setAttribute('width', h/2)
+  rect.setAttribute('height', h)
+  rect.setAttribute('fill', bg)
+
+  svg.appendChild(rect)
+};
+
+drawStaticDiagram("#fff", "2")
+coverLeft()
+drawBarrier(d, d / 2)
+drawPlaneWaves(k0, "#fff", "2")
+
