@@ -17,7 +17,6 @@ const {scene, camera, renderer, controls, dir1, dir2, point, point2} = setUpScen
 
 
 
-
 function slitContribution(x, y, t, x0, y0, sigma, k, omega, v) {
   const dx = x - x0;
   const dy = y - y0;
@@ -124,12 +123,14 @@ function velocityAt(x, y, t, d, sigma, k0, eps = 1e-4, vmax = 1000, vscale = 100
 let paused = true
 
 const d = 2.5
+const slitWidth = d / 5
 const sigma = 2.525
 const k0 = 6
 const dt = 1e-2
 const L = 10
 
 let firing = false
+let fired = 0
 window.addEventListener("click", onDown)
 
 function onDown(e) {
@@ -149,6 +150,9 @@ function onUp(e) {
 }
 
 function onMove(e) {
+  fired++
+  if(fired == 10) fired = 0
+  if (fired > 1) return
   const svg = document.getElementById('trajectory')
 
   let createdPaths = []
@@ -179,7 +183,7 @@ function onMove(e) {
       case 3:
         strokeWidth = 2
         stroke = "#94abc1"
-        blurValue = 0
+        blurValue = 2
         disappears = false
         break
       case 4:
@@ -190,46 +194,45 @@ function onMove(e) {
         break
     }
 
-    const path = getTrajectory(scaleX(e.clientX), scaleY(e.clientY),0, d, sigma, k0, stroke, strokeWidth, blurValue)
+    const trajectory = getTrajectory(scaleX(e.clientX), scaleY(e.clientY),0, d, sigma, k0)
+    const path = createSVG(trajectory.dString, stroke, strokeWidth, blurValue)
     // const path = getTrajectory(scaleX(e.clientX), .5,0, d, sigma, k0, stroke, strokeWidth, blurValue)
     // const path = getTrajectory(e.clientX, e.clientY,0, d, sigma, k0, "#fff", 8, 0)
     createdPaths.push(path)
 
 
     svg.appendChild(path)
+    const canvas = document.getElementById("buffer")
+    const cnvContext = canvas.getContext('2d')
 
     const length = path.getTotalLength();
     gsap.set(path, { 
       strokeDasharray: length,
       strokeDashoffset: length 
     });
-    gsap.to(path, { 
-      strokeDashoffset: 0, 
-      duration: duration - .5, 
-      ease: "elastic.in",
-      immediateRender: false
-    });
+    
     gsap.to(path, {
-      filter: "blur(1px)",
-      duration: duration + .65,
+      strokeDashoffset: 0,
+      duration: duration - 0.5,
       ease: "elastic.in",
       immediateRender: false
     });
-    if (disappears) {
-      gsap.to(path, {
-        opacity: 0,
-        duration: duration - .15,
-        ease: "expo.in",
-        immediateRender: false
-      });
-    } else {
-      gsap.to(path, {
-        opacity: 0.0,
-        duration: duration + .15,
-        ease: "expo.in",
-        immediateRender: false
-      });
-    }
+
+    gsap.to(path, {
+      opacity: disappears ? 0 : 0.0,
+      duration: duration + 0.15,
+      ease: "expo.in",
+      immediateRender: false,
+      onComplete: () => {
+        drawPointsToCanvas(cnvContext, trajectory.points, {
+          stroke,
+          strokeWidth,
+          opacity: 0.035,
+          blur: blurValue > 0 ? Math.min(blurValue, 16) : 0
+        });
+        path.remove();
+      }
+    });
 
 
   }
@@ -273,9 +276,10 @@ function map(value, inMin, inMax, outMin, outMax) {
 
 
 
-let getTrajectory = (x,y,t,d,sigma,k0,stroke,strokeWidth,blurValue) => {
+let getTrajectory = (x, y, t, d, sigma, k0) => {
   let position = [x,y]
   let dString = ""
+  let points = []
   let steps = 0
   const MAX_STEPS = 10000
 
@@ -293,6 +297,7 @@ let getTrajectory = (x,y,t,d,sigma,k0,stroke,strokeWidth,blurValue) => {
 
     if (steps%2 == 0 || steps == 0) {
       dString += (dString == "" ? "M" : "L") + `${px},${py}`
+      points.push({x: px, y: py})
     }
 
     position[0] += v2.vx * dt
@@ -300,6 +305,10 @@ let getTrajectory = (x,y,t,d,sigma,k0,stroke,strokeWidth,blurValue) => {
     t += dt
   }
 
+  return { dString: dString.trim(), points }
+}
+
+let createSVG = (dString, stroke, strokeWidth, blurValue) => {
   const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
   path.setAttribute("d", dString.trim());
   path.setAttribute("fill", "none");
@@ -403,11 +412,14 @@ let getDetectionEvent = ({L, tMin, tMax, tSteps, yMin, yMax, ySteps, d, sigma, k
 }
 
 
-let getBackwardTrajectory = (x, y, t, d, sigma, k0, stroke, strokeWidth, blurValue, xStop = 0) => {
+let getBackwardTrajectory = (x, y, t, d, sigma, k0, xStop = 0) => {
   let position = [x, y]
   let dString = ""
+  let points = []
   let steps = 0
   const MAX_STEPS = 10000
+
+  d = d + (Math.random() -.5) * 2 * slitWidth
 
   const h = -1 * dt
 
@@ -427,6 +439,7 @@ let getBackwardTrajectory = (x, y, t, d, sigma, k0, stroke, strokeWidth, blurVal
 
     if (steps % 2 === 0 || steps === 1) {
       dString += (dString === "" ? "M" : "L") + `${px},${py}`
+      points.push({x: px, y: py})
     }
 
     const v1 = velocityAt(position[0], position[1], t, d, sigma, k0)
@@ -443,22 +456,17 @@ let getBackwardTrajectory = (x, y, t, d, sigma, k0, stroke, strokeWidth, blurVal
 
   if (dString === "") return null
 
-  const path = document.createElementNS("http://www.w3.org/2000/svg", "path")
-  path.setAttribute("d", dString.trim())
-  path.setAttribute("fill", "none")
-  path.setAttribute("stroke", stroke)
-  path.setAttribute("opacity", ".9")
-  path.setAttribute("stroke-width", strokeWidth)
-  path.setAttribute("stroke-linecap", "round");
-  path.setAttribute("stroke-linejoin", "round");
-  path.style.filter = `blur(${blurValue}px)`
+  // const finalPx = 0
+  // const finalPy = pixelValueY(position[1])
 
-  return path
+  // dString += `L${finalPx},${finalPy}`
+  // points.push({ x: finalPx, y: finalPy })
+
+  return { dString: dString.trim(), points }
 };
 
 async function burst(N) {
   return new Promise((resolve) => {
-    const svg = document.getElementById('trajectory')
     let paths=[]
 
 
@@ -479,42 +487,6 @@ async function burst(N) {
       })
 
       let strokeWidth, stroke, blurValue, disappears
-      const duration = .5
-
-      for (let j = 4; j<5; j++) {
-        switch(j) {
-          case 0:
-          strokeWidth = 128
-          stroke = "#2B536A"
-          blurValue = 128
-          disappears = true
-            break
-          case 1:
-            strokeWidth = 16
-            stroke = "#6D92A6"
-            blurValue = 32
-            disappears = true
-            break
-          case 2:
-            strokeWidth = 8
-            stroke = "#88ABBE"
-            blurValue = 8
-            disappears = true
-            break
-          case 3:
-            strokeWidth = 2
-            stroke = "#94abc1"
-            blurValue = 0
-            disappears = false
-            break
-          case 4:
-            strokeWidth = 1
-            stroke = "#fff"
-            blurValue = 0
-            disappears = false
-            break
-        }
-
         const path = getBackwardTrajectory(
           event.x,
           event.y,
@@ -522,54 +494,120 @@ async function burst(N) {
           d,
           sigma,
           k0,
-          stroke,
-          strokeWidth,
-          blurValue,
           0
         )
         if (!path) continue
 
-        if(event.x == L) {detectElectron(100 - ((event.y+10) * 100 / 20))}
+        // if(event.x == L) {detectElectron(100 - ((event.y+10) * 100 / 20))}
 
-        svg.appendChild(path)
+        path.detectionY =
+          event.x === L
+            ? 100 - ((event.y + 10) * 100 / 20)
+            : null
+
+        
         paths.push(path)
-
-        const length = path.getTotalLength();
-        // gsap.set(path, { 
-        //   strokeDasharray: length,
-        //   strokeDashoffset: length 
-        // });
-        // gsap.to(path, { 
-        //   strokeDashoffset: 0, 
-        //   duration: duration, 
-        //   ease: "elastic.in",
-        //   immediateRender: false
-        // });
-        gsap.to(path, {
-          filter: "blur(1px)",
-          duration: duration + .15,
-          ease: "expo.in",
-          immediateRender: false
-        });
-        if (disappears) {
-          gsap.to(path, {
-            opacity: 0,
-            duration: duration + .15,
-            ease: "expo.in",
-            immediateRender: false
-          });
-        } else {
-          gsap.to(path, {
-            opacity: 1.0,
-            duration: duration + .15,
-            ease: "expo.in",
-            immediateRender: false
-          });
-        }
-      }
     }
     resolve(paths)
   })
+}
+
+let stagger = (paths) => {
+  const svg = document.getElementById('trajectory')
+  const delay = .25
+  const duration = .95
+
+  for (const [pathIndex, trajectory] of paths.entries()) {
+    let detected = false
+
+    for (let i = 0; i < 5; i++ ) {
+      
+
+      let strokeWidth, stroke, blurValue, disappears
+
+      switch(i) {
+      case 0:
+        strokeWidth = 32
+        stroke = "#2B536A"
+        blurValue = 64
+        disappears = true
+        break
+      case 1:
+        strokeWidth = 16
+        stroke = "#6D92A6"
+        blurValue = 32
+        disappears = true
+        break
+      case 2:
+        strokeWidth = 8
+        stroke = "#88ABBE"
+        blurValue = 8
+        disappears = true
+        break
+      case 3:
+        strokeWidth = 2
+        stroke = "#94abc1"
+        blurValue = 2
+        disappears = true
+        break
+      case 4:
+        strokeWidth = 1
+        stroke = "#fff"
+        blurValue = 0
+        disappears = false
+        break
+      }
+
+
+      const path = createSVG(trajectory.dString, stroke, strokeWidth, blurValue)
+      svg.appendChild(path)
+      
+
+      const canvas = document.getElementById("buffer")
+      const cnvContext = canvas.getContext('2d')
+
+      const length = path.getTotalLength();
+      gsap.set(path, { 
+        strokeDasharray: length,
+        strokeDashoffset: length 
+      })
+
+      const groupDelay = delay * pathIndex
+      
+      gsap.to(path, {
+        strokeDashoffset: 0,
+        duration: duration - 0.5,
+        ease: "elastic.in",
+        delay: groupDelay,
+        immediateRender: false,
+
+        onUpdate: function() {
+          if (!detected && trajectory.detectionY !== null && this.progress() > 0.85) {
+            detected = true
+            detectElectron(trajectory.detectionY)
+          }
+        }
+      })
+
+
+      gsap.to(path, {
+        opacity: disappears ? 0 : 0.0,
+        duration: duration + 0.5,
+        delay: groupDelay,
+        ease: "expo.in",
+        immediateRender: false,
+        onComplete: () => {
+          drawPointsToCanvas(cnvContext, trajectory.points, {
+            stroke,
+            strokeWidth,
+            opacity:  disappears ? 0 : 0.0,
+            blur: blurValue > 0 ? Math.min(blurValue, 16) : 0
+          })
+          path.remove()
+        }
+      })
+    }
+  }
 }
 
 let drawStaticDiagram = (stroke, strokeWidth) => {
@@ -629,57 +667,115 @@ let drawStaticDiagram = (stroke, strokeWidth) => {
 
 
 window.addEventListener('keydown', async function(e) {
+  if(e.key == 'v') {
+    const paths = await burst(100)
+    stagger(paths)
+  }
+})
+
+window.addEventListener('keydown', async function(e) {
   if(e.key == 'x') {
     const paths = await burst(20)
+    stagger(paths)
   }
 })
 
 window.addEventListener('keydown', async function(e) {
   if(e.key == 'c') {
     const paths = await burst(5)
+    stagger(paths)
   }
 })
 
 window.addEventListener('keydown', async function(e) {
   if(e.key == 'z') {
     const paths = await burst(1)
+    stagger(paths)
   }
 })
 
-let detectElectron = (y) => {
-  const w = window.innerWidth
-  const h = window.innerHeight
-  const measurements = document.querySelector('.measurements')
-  const measurement = document.createElement('div')
-  measurement.classList.add('measurement')
-  measurement.style.top = y.toString() + '%'
-  measurement.style.opacity = '0'
-  // measurement.style.left = w > h ? 'calc(100vh + ' + ((Math.random() * (w - h))/4).toString() + 'px)' : 'calc(100vw + ' + (Math.random() * (h - w)).toString() + 'px)'
-  measurement.style.left = (Math.random() * 100).toString() + '%'
-  const m1 = document.createElement('div')
-  m1.classList.add('m1')
-  measurement.appendChild(m1)
-  const m2 = document.createElement('div')
-  m2.classList.add('m2')
-  measurement.appendChild(m2)
-  const m3 = document.createElement('div')
-  m3.classList.add('m3')
-  measurement.appendChild(m3)
-  const m4 = document.createElement('div')
-  m4.classList.add('m4')
-  measurement.appendChild(m4)
-  // const m5 = document.createElement('div')
-  // m5.classList.add('m5')
-  // measurement.appendChild(m5)
-  measurements.appendChild(measurement)
-  const op = Math.random()/3 + .65
+const detectElectron = (yPercent) => {
+  const canvas = document.getElementById("buffer")
+  const ctx = canvas.getContext("2d")
+  const rect = canvas.getBoundingClientRect()
+  const dpr = window.devicePixelRatio || 1
 
-  gsap.to(measurement, {
-    opacity: op,
-    duration: .5,
-    ease: "expo.inout",
-  })
+  // x between 100vh and 100vw
+  const minX = window.innerHeight
+  const maxX = window.innerWidth
+
+  const cssX = minX + Math.random() * (maxX - minX)
+  const cssY = (yPercent / 100) * rect.height
+
+  // const x = cssX * dpr
+  // const y = cssY * dpr
+  const x = cssX
+  const y = cssY
+
+  
+
+  const hexToRgb = (hex) => {
+  let h = hex.replace("#", "")
+
+  if (h.length === 3) {
+    h = h.split("").map(c => c + c).join("")
+  }
+
+  const num = parseInt(h, 16)
+
+    return {
+      r: (num >> 16) & 255,
+      g: (num >> 8) & 255,
+      b: num & 255
+    }
+  }
+
+  const rgba = (hex, alpha = 1) => {
+    const { r, g, b } = hexToRgb(hex)
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`
+  }
+
+  const addCurveStops = (gradient, color, curveFn, steps = 24) => {
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps
+      const alpha = curveFn(t)
+      gradient.addColorStop(t, rgba(color, alpha))
+    }
+  }
+
+  const drawRadialDot = (radius, color, alpha = 1) => {
+    const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius)
+
+    const op = .5 + Math.random() / 2
+
+    ctx.globalCompositeOperation = "screen"
+
+    
+    addCurveStops(
+      gradient,
+      color,
+      t => Math.pow(1 - t, 3),   // cubic falloff
+      32
+    )
+
+    ctx.globalAlpha = alpha * op
+    ctx.fillStyle = gradient
+
+
+    ctx.beginPath()
+    ctx.arc(x, y, radius, 0, Math.PI * 2)
+    ctx.fill()
+
+    ctx.restore()
+  }
+
+  drawRadialDot(3 * dpr, "#ffffff", .7)
+  drawRadialDot(4 * dpr, "#94abc1", .27)
+  drawRadialDot(6.5 * dpr, "#88ABBE", 0.15)
+  drawRadialDot(24 * dpr, "#6D92A6", 0.009)
+  drawRadialDot(248 * dpr, "#2B536A", 0.005)
 }
+
 
 function inPixels(x) {
   return window.innerHeight * x /20
@@ -701,14 +797,31 @@ const drawBarrier = (d, slitWidth = 1) => {
   const bottomSlitBottom = centerY + halfGap + halfSlit
 
   const makeLine = (x1, y1, x2, y2) => {
-    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line')
-    line.setAttribute('x1', x1)
-    line.setAttribute('y1', y1)
-    line.setAttribute('x2', x2)
-    line.setAttribute('y2', y2)
-    line.setAttribute('stroke', 'white')
-    line.setAttribute('stroke-width', '8')
-    line.setAttribute('stroke-linecap', 'round')
+    const ns = "http://www.w3.org/2000/svg"
+    // const group = document.createElementNS(ns, "g")
+
+    // const border = document.createElementNS(ns, "line")
+    // border.setAttribute("x1", x1)
+    // border.setAttribute("y1", y1)
+    // border.setAttribute("x2", x2)
+    // border.setAttribute("y2", y2)
+    // border.setAttribute("stroke", "#050B14")
+    // border.setAttribute("stroke-width", "10")
+    // border.setAttribute("stroke-linecap", "round")
+
+    const line = document.createElementNS(ns, "line")
+    line.setAttribute("x1", x1)
+    line.setAttribute("y1", y1)
+    line.setAttribute("x2", x2)
+    line.setAttribute("y2", y2)
+    line.setAttribute("stroke", "rgba(255,255,255,.5")
+    // line.setAttribute("alpha", .1)
+    line.setAttribute("stroke-width", "8")
+    line.setAttribute("stroke-linecap", "round")
+
+    // group.appendChild(border)
+    // group.appendChild(line)
+
     return line
   }
 
@@ -745,8 +858,14 @@ let drawPlaneWaves = (k0, stroke, strokeWidth) => {
   let x = window.innerHeight/2
   const lambda = inPixels(2 * Math.PI / k0)
   const diagram = document.querySelector('#staticDiagram')
+  let first = true
 
   while (x > 0) {
+    if (first) {
+      first = false
+      x -= lambda
+      continue
+    }
     diagram.appendChild(makeLine(x.toString(), "0", x.toString(), window.innerHeight.toString()))
     x -= lambda
   }
@@ -770,10 +889,66 @@ const coverLeft = () => {
   rect.setAttribute('fill', bg)
 
   svg.appendChild(rect)
-};
+}
 
+const canvas = document.getElementById("buffer")
+const cnvContext = canvas.getContext('2d')
+
+function resizeCanvas() {
+  const dpr = window.devicePixelRatio || 1
+  const w = window.innerWidth
+  const h = window.innerHeight
+
+  canvas.width = Math.floor(w * dpr)
+  canvas.height = Math.floor(h * dpr)
+
+  canvas.style.width = `${w}px`
+  canvas.style.height = `${h}px`
+
+  cnvContext.setTransform(dpr, 0, 0, dpr, 0, 0)
+
+  // important: clear whole canvas back to transparency
+  cnvContext.clearRect(0, 0, w, h)
+
+  // fill only x > 100vh
+  cnvContext.fillStyle = "#051b30"
+  cnvContext.fillRect(h, 0, w - h, h)
+}
+
+let drawPointsToCanvas = (ctx, points, {
+  stroke = 'fff',
+  strokeWidth = 1,
+  opacity = 1,
+  blur = 0
+}) => {
+  if(!points.length) return
+
+  ctx.save()
+  ctx.globalAlpha = opacity
+  ctx.strokeStyle = stroke
+  ctx.lineWidth = strokeWidth
+  ctx.lineCap = 'round'
+  ctx.lineJoin = 'round'
+
+  if (blur > 0) {
+    ctx.shadowBlur = blur
+    ctx.shadowColor = stroke
+  }
+
+  ctx.beginPath()
+  ctx.moveTo(points[0].x, points[0].y)
+  for (let i = 1; i < points.length; i++) {
+    ctx.lineTo(points[i].x, points[i].y)
+  }
+  ctx.stroke()
+  ctx.restore()
+}
+
+
+
+resizeCanvas()
 drawStaticDiagram("#fff", "2")
-coverLeft()
-drawBarrier(d, d / 2)
+// coverLeft()
+drawBarrier(d, slitWidth)
 drawPlaneWaves(k0, "#fff", "2")
 
