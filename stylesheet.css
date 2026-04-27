@@ -203,3 +203,15 @@ input[type="range"] {
     top: 60vh;
 }
 
+.feedback {
+    width: 1rem;
+    height: 1rem;
+    background-color: #fff;
+    border-radius: 50%;
+    position: absolute;
+    transform: translate(-50%, -50%);
+    opacity: .2;
+    filter: blur(40px);
+    z-index: 15;
+}
+

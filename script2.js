@@ -701,16 +701,37 @@ const detectElectron = (yPercent) => {
   const dpr = window.devicePixelRatio || 1
 
   // x between 100vh and 100vw
-  const minX = window.innerHeight
+  const minX = window.innerHeight + 4
   const maxX = window.innerWidth
 
+
   const cssX = minX + Math.random() * (maxX - minX)
+  console.log(cssX)
   const cssY = (yPercent / 100) * rect.height
 
   // const x = cssX * dpr
   // const y = cssY * dpr
   const x = cssX
   const y = cssY
+
+  const dot = document.createElement("div")
+  dot.classList.add("feedback")
+  dot.style.left = x.toString() + "px"
+  dot.style.top = yPercent.toString() + "vh"
+  document.querySelector("body").appendChild(dot)
+
+  gsap.to(dot, {
+    width: "2.5rem",
+    height: "2.5rem",
+    opacity: .5,
+    duration: .2,
+    ease: "sine.inOut",
+    yoyo: true,
+    repeat: 1,
+    onComplete: () => {
+      dot.remove()
+  }
+  })
 
   
 
