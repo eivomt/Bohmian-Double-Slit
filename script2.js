@@ -122,10 +122,10 @@ function velocityAt(x, y, t, d, sigma, k0, eps = 1e-4, vmax = 1000, vscale = 100
 
 let paused = true
 
-const d = 2.5
+let d = 2.5
 const slitWidth = d / 5
 const sigma = 2.525
-const k0 = 6
+let k0 = 6
 const dt = 1e-2
 const L = 10
 
@@ -419,7 +419,7 @@ let getBackwardTrajectory = (x, y, t, d, sigma, k0, xStop = 0) => {
   let steps = 0
   const MAX_STEPS = 10000
 
-  d = d + (Math.random() -.5) * 2 * slitWidth
+  // d = d + (Math.random() -.5) * 2 * slitWidth
 
   const h = -1 * dt
 
@@ -944,6 +944,51 @@ let drawPointsToCanvas = (ctx, points, {
   ctx.restore()
 }
 
+let drawing = false
+const lambdaSlider = document.getElementById("lambdaSlider")
+const dSlider = document.getElementById("dSlider")
+// lambdaSlider.oninput = (event) => {
+//   const output = document.getElementById("lambdaN")
+//   output.innerHTML = event.target.value
+//   console.log(event)
+// }
+
+dSlider.oninput = event => {
+  const output = document.getElementById("dN")
+  output.innerHTML = event.target.value
+  d = parseFloat(event.target.value)
+  console.log(typeof(d))
+  redraw()
+}
+
+lambdaSlider.oninput = event => {
+  const output = document.getElementById("lambdaN")
+  output.innerHTML = event.target.value
+  k0 = 2*Math.PI / event.target.value
+  redraw()
+}
+
+let redraw = () => {
+  if (drawing) return
+  drawing = true
+  cnvContext.clearRect(0, 0, canvas.width, canvas.height)
+  resizeCanvas()
+
+  const circles = document.querySelectorAll("circle")
+  const lines = document.querySelectorAll("line")
+
+  for (const circle of circles) {
+    circle.remove()
+  }
+  for (const line of lines) {
+    line.remove()
+  }
+
+  drawStaticDiagram("#fff", "2")
+  drawBarrier(d, slitWidth)
+  drawPlaneWaves(k0, "#fff", "2")
+  drawing = false
+}
 
 
 resizeCanvas()

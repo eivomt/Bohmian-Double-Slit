@@ -173,11 +173,33 @@ canvas {
     position: absolute;
 }
 
-#lambdaSlider {
+input[type="range"] {
     position: absolute;
-    top: 50vh;
     left: 35vw;
     width: 30vw;
     z-index: 10;
+} 
+
+#lambdaSlider {
+    top: 50vh;
+}
+
+#dSlider {
+    top: 70vh;
+}
+
+.variableValue {
+    position: absolute;
+    left: 50vw;
+    z-index: 10;
+    color: #fff;
+}
+
+#lambdaN {
+    top: 40vh;
+}
+
+#dN {
+    top: 60vh;
 }
 
