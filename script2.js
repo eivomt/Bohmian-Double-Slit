@@ -694,6 +694,36 @@ window.addEventListener('keydown', async function(e) {
   }
 })
 
+let fire = false
+
+const sleep = (seconds) =>
+  new Promise(resolve => setTimeout(resolve, seconds * 1000))
+
+let fireContinuously = async () => {
+  fire = true
+
+  while (fire) {
+    const path = await burst(1)
+    stagger(path)
+
+    await sleep(0.15)
+  }
+}
+
+let stopFiring = () => {
+  fire = false
+}
+
+window.addEventListener('keydown', async function(e) {
+  if(e.key == 'f') {
+    if(!fire) {
+      fireContinuously()
+    } else {
+      stopFiring()
+    }
+  }
+})
+
 const detectElectron = (yPercent) => {
   const canvas = document.getElementById("buffer")
   const ctx = canvas.getContext("2d")
@@ -725,12 +755,13 @@ const detectElectron = (yPercent) => {
     height: "2.5rem",
     opacity: .5,
     duration: .2,
+    delay: .1,
     ease: "sine.inOut",
     yoyo: true,
     repeat: 1,
     onComplete: () => {
       dot.remove()
-  }
+    }
   })
 
   
@@ -790,11 +821,13 @@ const detectElectron = (yPercent) => {
     ctx.restore()
   }
 
-  drawRadialDot(3 * dpr, "#ffffff", .7)
-  drawRadialDot(4 * dpr, "#94abc1", .27)
-  drawRadialDot(6.5 * dpr, "#88ABBE", 0.15)
-  drawRadialDot(24 * dpr, "#6D92A6", 0.009)
-  drawRadialDot(248 * dpr, "#2B536A", 0.005)
+  setTimeout(() => {
+    drawRadialDot(3 * dpr, "#ffffff", .7)
+    drawRadialDot(4 * dpr, "#94abc1", .27)
+    drawRadialDot(6.5 * dpr, "#88ABBE", 0.15)
+    drawRadialDot(24 * dpr, "#6D92A6", 0.009)
+    drawRadialDot(248 * dpr, "#2B536A", 0.005)
+  }, 100)
 }
 
 
@@ -991,6 +1024,7 @@ lambdaSlider.oninput = event => {
 
 let redraw = () => {
   if (drawing) return
+  fire = false
   drawing = true
   cnvContext.clearRect(0, 0, canvas.width, canvas.height)
   resizeCanvas()
