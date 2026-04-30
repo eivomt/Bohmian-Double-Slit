@@ -11,7 +11,7 @@ import { makeVelocityTexture, makeScalarTexture, createFlowParticles, writeVeloc
 
 const {scene, camera, renderer, controls, dir1, dir2, point, point2} = setUpScene()
 
-
+let bohmian = false
 
 
 
@@ -247,10 +247,6 @@ function onMove(e) {
 
 }
 
-// console.log(window.innerHeight)
-// console.log(window.innerWidth)
-
-// const w = window.innerWidth
 
 let scaleY = (y) => {
   return -1 * map(y, 0, window.innerHeight, -L, L,)
@@ -463,7 +459,292 @@ let getBackwardTrajectory = (x, y, t, d, sigma, k0, xStop = 0) => {
   // points.push({ x: finalPx, y: finalPy })
 
   return { dString: dString.trim(), points }
-};
+}
+
+
+
+// figureCanvas = document.create ..
+// resizeFigureCanvas = (canvas) => {
+    // canvas.width = 100vw - 100vh
+    // canvas.height = 100vh
+    // canvas.clearRect
+// }
+
+// window.addEventListener('resize', () => {
+//   resizeFigureCanvas()
+// })
+
+// const fig1 = document.getElementById('fig1-btn')
+// fig1.addEventListiner('click', (){
+  // drawDetectionDistributionCanvas(figureCanvas, 500, d, k0, sigma)
+// })
+
+// ---------- canvas setup ----------
+const figureCanvas = document.createElement("canvas")
+figureCanvas.style.position = "fixed"
+figureCanvas.style.top = "0"
+figureCanvas.style.right = "0"
+figureCanvas.style.zIndex = "1000"
+figureCanvas.style.borderLeft = "8px solid white"
+figureCanvas.style.background = "black"
+
+document.body.appendChild(figureCanvas)
+
+function resizeFigureCanvas() {
+  const size = window.innerHeight
+
+  figureCanvas.width = Math.max(200, window.innerWidth - size)
+  figureCanvas.height = size
+
+  const ctx = figureCanvas.getContext("2d")
+  ctx.clearRect(0, 0, figureCanvas.width, figureCanvas.height)
+}
+
+resizeFigureCanvas()
+
+window.addEventListener("resize", () => {
+  resizeFigureCanvas()
+});
+
+// ---------- draw wrapper ----------
+function renderFig1() {
+  drawDetectionDistributionCanvas({
+    canvas: figureCanvas,
+    timeResolution: 1400,
+    d,
+    k0,
+    sigma,
+    tMin: 0,
+    tMax: 5,
+    L: 10
+  })
+}
+
+function renderFig2() {
+  drawTimeIndependentYDistribution({
+    canvas: figureCanvas,
+    resolution: 1400,
+    d,
+    k0,
+    sigma,
+    tMin: 0,
+    tMax: 5,
+    L: 10
+  })
+}
+
+// ---------- button ----------
+const fig1 = document.getElementById("fig1-btn")
+
+fig1.addEventListener("click", () => {
+  renderFig1()
+});
+
+const fig2 = document.getElementById("fig2-btn")
+
+fig2.addEventListener("click", () => {
+  renderFig2()
+});
+
+function drawDetectionDistributionCanvas({
+  canvas,
+  timeResolution,   // tSteps
+  d,
+  k0,
+  sigma = 1,
+  tMin = 0,
+  tMax = 20,
+  L = 10,
+  ySteps = timeResolution
+}) {
+  const ctx = canvas.getContext("2d")
+
+  const width = canvas.width
+  const height = canvas.height
+
+  const tSteps = timeResolution
+  const dt = (tMax - tMin) / (tSteps - 1)
+  const yMin = -L
+  const yMax = L
+  const dy = (yMax - yMin) / (ySteps - 1)
+
+  const grid = new Array(tSteps * ySteps)
+  let maxW = 0
+
+  // Beregn fluks gjennom høyre rand x = L
+  for (let i = 0; i < tSteps; i++) {
+    const t = tMin + i * dt
+
+    for (let j = 0; j < ySteps; j++) {
+      const y = yMin + j * dy
+      const x = L
+
+      const w = boundaryFlux(x, y, t, d, sigma, k0, "right")
+
+      grid[i * ySteps + j] = w
+      if (w > maxW) maxW = w
+    }
+  }
+
+  const image = ctx.createImageData(width, height)
+  const data = image.data
+
+  for (let px = 0; px < width; px++) {
+    const i = Math.floor((px / (width - 1)) * (tSteps - 1))
+
+    for (let py = 0; py < height; py++) {
+      const j = Math.floor(((height - 1 - py) / (height - 1)) * (ySteps - 1))
+
+      const w = grid[i * ySteps + j]
+
+      // Gråskala: svart = lav sannsynlighet, hvit = høy
+      const intensity = maxW > 0
+        ? Math.floor(255 * Math.sqrt(w / maxW))
+        : 0;
+
+      const idx = 4 * (py * width + px)
+      data[idx + 0] = intensity
+      data[idx + 1] = intensity
+      data[idx + 2] = intensity
+      data[idx + 3] = 255
+    }
+  }
+
+  ctx.putImageData(image, 0, 0)
+}
+
+
+function getYDistributionFromDetectionFlux({
+  resolution,
+  d,
+  k0,
+  sigma = 1,
+  tMin = 0,
+  tMax = 20,
+  L = 10,
+  ySteps = 300
+}) {
+  const tSteps = resolution
+  const dt = (tMax - tMin) / (tSteps - 1)
+
+  const yMin = -L
+  const yMax = L
+  const dy = (yMax - yMin) / (ySteps - 1)
+
+  const yDistribution = new Array(ySteps).fill(0)
+
+  // Sum over time for each y
+  for (let j = 0; j < ySteps; j++) {
+    const y = yMin + j * dy
+    const x = L
+
+    let sum = 0
+
+    for (let i = 0; i < tSteps; i++) {
+      const t = tMin + i * dt
+      sum += boundaryFlux(x, y, t, d, sigma, k0, "right")
+    }
+
+    yDistribution[j] = sum
+  }
+
+  // Normalize so sum = 1
+  const total = yDistribution.reduce((a, b) => a + b, 0);
+
+  if (total > 0) {
+    for (let j = 0; j < ySteps; j++) {
+      yDistribution[j] /= total
+    }
+  }
+
+  return yDistribution
+}
+
+function drawTimeIndependentYDistribution({
+  canvas,
+  resolution,
+  d,
+  k0,
+  sigma = 1,
+  tMin = 0,
+  tMax = 20,
+  L = 10,
+  ySteps = resolution
+}) {
+
+  
+  const ctx = canvas.getContext("2d")
+  const width = canvas.width
+  const height = canvas.height
+
+  // const ySteps = Math.floor(resolution * (height/width))
+
+  ctx.clearRect(0, 0, width, height)
+
+  const dist = getYDistributionFromDetectionFlux({
+    resolution,
+    d,
+    k0,
+    sigma,
+    tMin,
+    tMax,
+    L,
+    ySteps
+  });
+
+  const maxP = Math.max(...dist)
+
+  const image = ctx.createImageData(width, height)
+  const data = image.data
+
+  for (let py = 0; py < height; py++) {
+    const j = Math.floor(((height - 1 - py) / (height - 1)) * (ySteps - 1))
+    const p = dist[j]
+
+    const intensity = maxP > 0
+      ? Math.floor(255 * Math.sqrt(p / maxP))
+      : 0;
+
+    for (let px = 0; px < width; px++) {
+      const idx = 4 * (py * width + px)
+
+      data[idx + 0] = intensity
+      data[idx + 1] = intensity
+      data[idx + 2] = intensity
+      data[idx + 3] = 255
+    }
+  }
+
+  ctx.putImageData(image, 0, 0)
+
+  // Optional curve overlay
+  ctx.beginPath()
+  ctx.strokeStyle = "white"
+  ctx.lineWidth = 2
+
+  for (let j = 0; j < ySteps; j++) {
+    const p = dist[j]
+
+    const x = maxP > 0
+      ? (p / maxP) * (width - 10)
+      : 0;
+
+    const y = height - 1 - (j / (ySteps - 1)) * (height - 1)
+
+    if (j === 0) ctx.moveTo(x, y)
+    else ctx.lineTo(x, y)
+  }
+
+  ctx.stroke()
+
+  return dist
+}
+
+
+
+
+
+
 
 async function burst(N) {
   return new Promise((resolve) => {
@@ -512,10 +793,22 @@ async function burst(N) {
   })
 }
 
-let stagger = (paths) => {
+let stagger = (paths, bohmian=true) => {
   const svg = document.getElementById('trajectory')
   const delay = .25
   const duration = .95
+
+  if(!bohmian) {
+    for (const [pathIndex, trajectory] of paths.entries()) {
+      console.log(trajectory)
+      if(trajectory.detectionY !== null) {
+        detectElectron(trajectory.detectionY)
+      }
+      // sleep(.1)
+    }
+
+    return
+  }
 
   for (const [pathIndex, trajectory] of paths.entries()) {
     let detected = false
@@ -600,7 +893,7 @@ let stagger = (paths) => {
           drawPointsToCanvas(cnvContext, trajectory.points, {
             stroke,
             strokeWidth,
-            opacity:  disappears ? 0 : 0.0,
+            opacity:  disappears ? 0 : 0.1,
             blur: blurValue > 0 ? Math.min(blurValue, 16) : 0
           })
           path.remove()
@@ -704,7 +997,7 @@ let fireContinuously = async () => {
 
   while (fire) {
     const path = await burst(1)
-    stagger(path)
+    stagger(path, bohmian)
 
     await sleep(0.15)
   }
@@ -713,6 +1006,26 @@ let fireContinuously = async () => {
 let stopFiring = () => {
   fire = false
 }
+
+const bohmBtn = document.getElementById('toggleBohmian')
+bohmBtn.addEventListener('click', () => {
+  bohmian = !bohmian
+})
+
+const fireBtn = document.getElementById("fire")
+const stop = document.getElementById("stop")
+const play = document.getElementById("play")
+fireBtn.addEventListener('click', async function (e) {
+      if(!fire) {
+      fireContinuously(bohmian)
+      stop.style.display = "block"
+      play.style.display = "none"
+    } else {
+      stopFiring()
+      stop.style.display = "none"
+      play.style.display = "block"
+    }
+})
 
 window.addEventListener('keydown', async function(e) {
   if(e.key == 'f') {
@@ -736,7 +1049,6 @@ const detectElectron = (yPercent) => {
 
 
   const cssX = minX + Math.random() * (maxX - minX)
-  console.log(cssX)
   const cssY = (yPercent / 100) * rect.height
 
   // const x = cssX * dpr
@@ -755,7 +1067,7 @@ const detectElectron = (yPercent) => {
     height: "2.5rem",
     opacity: .5,
     duration: .2,
-    delay: .1,
+    delay: .08,
     ease: "sine.inOut",
     yoyo: true,
     repeat: 1,
@@ -868,7 +1180,7 @@ const drawBarrier = (d, slitWidth = 1) => {
     line.setAttribute("y1", y1)
     line.setAttribute("x2", x2)
     line.setAttribute("y2", y2)
-    line.setAttribute("stroke", "rgba(255,255,255,.5")
+    line.setAttribute("stroke", "rgba(255,255,255,1")
     // line.setAttribute("alpha", .1)
     line.setAttribute("stroke-width", "8")
     line.setAttribute("stroke-linecap", "round")
@@ -1001,17 +1313,11 @@ let drawPointsToCanvas = (ctx, points, {
 let drawing = false
 const lambdaSlider = document.getElementById("lambdaSlider")
 const dSlider = document.getElementById("dSlider")
-// lambdaSlider.oninput = (event) => {
-//   const output = document.getElementById("lambdaN")
-//   output.innerHTML = event.target.value
-//   console.log(event)
-// }
 
 dSlider.oninput = event => {
   const output = document.getElementById("dN")
   output.innerHTML = event.target.value
   d = parseFloat(event.target.value)
-  console.log(typeof(d))
   redraw()
 }
 
@@ -1020,6 +1326,14 @@ lambdaSlider.oninput = event => {
   output.innerHTML = event.target.value
   k0 = 2*Math.PI / event.target.value
   redraw()
+}
+
+lambdaSlider.onchange = () => {
+  renderFig2()
+}
+
+dSlider.onchange = () => {
+  renderFig2()
 }
 
 let redraw = () => {
@@ -1042,13 +1356,18 @@ let redraw = () => {
   drawStaticDiagram("#fff", "2")
   drawBarrier(d, slitWidth)
   drawPlaneWaves(k0, "#fff", "2")
+  
+
+  stop.style.display = "none"
+  play.style.display = "block"
+  
   drawing = false
 }
 
 
 resizeCanvas()
 drawStaticDiagram("#fff", "2")
-// coverLeft()
+coverLeft()
 drawBarrier(d, slitWidth)
 drawPlaneWaves(k0, "#fff", "2")
 
