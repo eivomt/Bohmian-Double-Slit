@@ -1,0 +1,83 @@
+@font-face {
+  font-family: 'SF Mono';
+  src: url('/sf-mono/SFMonoLight.otf') format('opentype');
+  font-weight: 300;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'SF Mono';
+  src: url('/sf-mono/SFMonoLightItalic.otf') format('opentype');
+  font-weight: 300;
+  font-style: italic;
+}
+
+@font-face {
+  font-family: 'SF Mono';
+  src: url('/sf-mono/SFMonoRegular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'SF Mono';
+  src: url('/sf-mono/SFMonoRegularItalic.otf') format('opentype');
+  font-weight: 400;
+  font-style: italic;
+}
+
+@font-face {
+  font-family: 'SF Mono';
+  src: url('/sf-mono/SFMonoMedium.otf') format('opentype');
+  font-weight: 500;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'SF Mono';
+  src: url('/sf-mono/SFMonoMediumItalic.otf') format('opentype');
+  font-weight: 500;
+  font-style: italic;
+}
+
+@font-face {
+  font-family: 'SF Mono';
+  src: url('/sf-mono/SFMonoSemibold.otf') format('opentype');
+  font-weight: 600;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'SF Mono';
+  src: url('/sf-mono/SFMonoSemiboldItalic.otf') format('opentype');
+  font-weight: 600;
+  font-style: italic;
+}
+
+@font-face {
+  font-family: 'SF Mono';
+  src: url('/sf-mono/SFMonoBold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'SF Mono';
+  src: url('/sf-mono/SFMonoBoldItalic.otf') format('opentype');
+  font-weight: 700;
+  font-style: italic;
+}
+
+@font-face {
+  font-family: 'SF Mono';
+  src: url('/sf-mono/SFMonoHeavy.otf') format('opentype');
+  font-weight: 800;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'SF Mono';
+  src: url('/sf-mono/SFMonoHeavyItalic.otf') format('opentype');
+  font-weight: 800;
+  font-style: italic;
+}

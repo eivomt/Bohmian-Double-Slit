@@ -6,6 +6,10 @@ html, body {
     font-family: sans-serif;
 }
 
+* {
+    font-family: 'SF Mono', monospace;
+}
+
 .controls {
     position: absolute;
     top: 10px;
@@ -60,9 +64,6 @@ button {
     cursor: pointer;
 }
 
-button:hover {
-    background: #666;
-}
 
 
 .controls {
@@ -92,7 +93,7 @@ button:hover {
 
 .measurements {
     /* background-color: #051b30; */
-    border-left: 8px solid rgba(255,255,255,.6);
+    border-left: 8px solid rgba(255,255,255,1);
     width: calc(100vw - 100vh);
     height: 100vh;
     position: relative;
@@ -173,43 +174,6 @@ canvas {
     position: absolute;
 }
 
-input[type="range"] {
-    position: absolute;
-    left: 10vh;
-    width: 30vh;
-    z-index: 10;
-}
-
-input[type="range"]:focus {
-    outline: none;
-}
-
-#lambdaSlider {
-    top: 75vh;
-}
-
-#dSlider {
-    top: 90vh;
-}
-
-.variableValue {
-    position: absolute;
-    left: 0vw;
-    width: 50vh;
-    display: flex;
-    justify-content: center;
-    z-index: 10;
-    color: #fff;
-}
-
-#lambdaN {
-    top: 67.5vh;
-}
-
-#dN {
-    top: 82.5vh;
-}
-
 .feedback {
     width: 1rem;
     height: 1rem;
@@ -224,20 +188,23 @@ input[type="range"]:focus {
 
 #fire {
     position: absolute;
-    top: 20vh;
-    left: 10vh;
+    bottom: calc(1.34em + 8px + 1.5rem);
+    left: 50vh;
+    transform: translateX(-50%);
     z-index: 10;
+    margin-bottom: 0 !important;
+    z-index: 99999999;
 }
 
 .fire {
-  background-color: #e9e9e9;
-  box-shadow: inset -4px 4px 8px #e2e2e2;
-  border: #fdfdfd 2px solid;
-  color: #555;
+  background-color: #fff !important;
+  /* box-shadow: inset -4px 4px 8px #e2e2e2; */
+  border: white 2px solid;
+  color: #050B14;
   font-weight: 900;
-  height: 2.5rem;
-  width: 2.5rem;
-  border-radius: 4rem;
+  height: 4rem !important;
+  width: 4rem !important;
+  border-radius: 50%;
   transition: .15s linear;
   cursor: pointer;
   display: flex;
@@ -247,13 +214,12 @@ input[type="range"]:focus {
 }
 
 .fire:hover {
-  box-shadow: inset 0px 4px 8px #dbdbdb;
-  background-color: #e9e9e9;
+  background-color: #fff;
 }
 
 #stop, #play {
   height: 40%;
-  fill: #555;
+  fill: #050B14;
 }
 
 .temporaryBtn {
@@ -262,14 +228,114 @@ input[type="range"]:focus {
     z-index: 1000;
 }
 
-#fig1-btn {
-    top: 10vh;
+.fig-btns {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: calc(100vw - 100vh);
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-around;
+    z-index: 9999999;
+    height: 100vh;
 }
 
-#fig2-btn {
-    top: 15vh;
+.b-btn {
+    position: absolute;
+    top: 0;
+    left: 50vh;
+    width: 50vh;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-around;
+    z-index: 9999999;
+    height: 100vh;
 }
 
-#toggleBohmian {
-    top: 40vh;
+.btn {
+    height: 2rem;
+    width: 2rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 50%;
+    margin-bottom: calc(1.34em + 8px + 2.5rem);
+    background-color: #050B14;
+    border: 0px solid white;
+    transition: .1s linear;
+    font-weight: 900;
+}
+
+
+.fig-btn:hover {
+    /* background-color: rgba(0,0,0,0) !important; */
+    outline: 2px solid white;
+}
+
+.active-btn {
+    outline: 2px solid white;
+}
+
+.bohm-btn {
+    background-color: #050B14;
+    color: #fff;
+    outline: 2px solid white !important;
+}
+
+.bohm-inactive {
+    background-color: #fff;
+    color: #050B14;
+    outline: 0px solid white !important;
+}
+
+#probability-graph {
+    position: absolute;
+    top: 0;
+    right: 0;
+    z-index: 1000000;
+}
+
+.slider-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 50vh;
+    height: 100vh;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    flex-direction: column;
+}
+
+
+input[type="range"] {
+    position: relative;
+    width: 30vh;
+    z-index: 10;
+}
+
+input[type="range"]:focus {
+    outline: none;
+}
+
+
+.variableValue {
+    display: flex;
+    justify-content: center;
+    z-index: 10;
+    font-size: small;
+    color: #fff;
+}
+
+.variableIdentifier {
+    display: flex;
+    justify-content: center;
+    z-index: 10;
+    color: #fff;
+}
+
+.variable {
+    margin-bottom: 2.5rem;
+    display: flex;
+    flex-direction: column;
 }

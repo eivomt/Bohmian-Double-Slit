@@ -502,6 +502,9 @@ function resizeFigureCanvas() {
 
 resizeFigureCanvas()
 
+let activeFigure = 2
+figureCanvas.style.display = "none"
+
 window.addEventListener("resize", () => {
   resizeFigureCanvas()
 });
@@ -537,14 +540,43 @@ function renderFig2() {
 const fig1 = document.getElementById("fig1-btn")
 
 fig1.addEventListener("click", () => {
+  figureCanvas.style.display = "block"
+  const graph = document.getElementById('probability-graph')
+  if(graph !== null) {
+    graph.remove()
+  }
+  const activeBtn = document.querySelector('.active-btn')
+  activeBtn.classList.remove('active-btn')
+  fig1.classList.add('active-btn')
   renderFig1()
-});
+  activeFigure = 1
+})
 
 const fig2 = document.getElementById("fig2-btn")
 
 fig2.addEventListener("click", () => {
+  figureCanvas.style.display = "block"
+  const activeBtn = document.querySelector('.active-btn')
+  activeBtn.classList.remove('active-btn')
+  fig2.classList.add('active-btn')
   renderFig2()
-});
+  activeFigure = 2
+})
+
+const fig3 = document.getElementById("fig3-btn")
+
+fig3.addEventListener("click", () => {
+  figureCanvas.style.display = "none"
+  const graph = document.getElementById('probability-graph')
+  if(graph !== null) {
+    graph.remove()
+  }
+  const activeBtn = document.querySelector('.active-btn')
+  activeBtn.classList.remove('active-btn')
+  fig3.classList.add('active-btn')
+  // renderFig3()
+  activeFigure = 3
+})
 
 function drawDetectionDistributionCanvas({
   canvas,
@@ -697,20 +729,30 @@ function drawTimeIndependentYDistribution({
   const image = ctx.createImageData(width, height)
   const data = image.data
 
+  // start: #050B14
+  // const r1 = 5,  g1 = 11,  b1 = 20
+  const r1 = 0,  g1 = 0,  b1 = 0
+  // end:   #88ABBE
+  // const r2 = 5, g2 = 27, b2 = 48
+  const r2 = 255, g2 = 255, b2 = 255
+
+
   for (let py = 0; py < height; py++) {
     const j = Math.floor(((height - 1 - py) / (height - 1)) * (ySteps - 1))
     const p = dist[j]
 
-    const intensity = maxP > 0
-      ? Math.floor(255 * Math.sqrt(p / maxP))
-      : 0;
+    const t = maxP > 0 ? Math.sqrt(p / maxP) : 0  // 0 → 1
+
+    const r = Math.floor(r1 + (r2 - r1) * t)
+    const g = Math.floor(g1 + (g2 - g1) * t)
+    const b = Math.floor(b1 + (b2 - b1) * t)
 
     for (let px = 0; px < width; px++) {
       const idx = 4 * (py * width + px)
 
-      data[idx + 0] = intensity
-      data[idx + 1] = intensity
-      data[idx + 2] = intensity
+      data[idx + 0] = r
+      data[idx + 1] = g
+      data[idx + 2] = b
       data[idx + 3] = 255
     }
   }
@@ -718,24 +760,96 @@ function drawTimeIndependentYDistribution({
   ctx.putImageData(image, 0, 0)
 
   // Optional curve overlay
-  ctx.beginPath()
-  ctx.strokeStyle = "white"
-  ctx.lineWidth = 2
+  // ctx.beginPath()
+  // ctx.strokeStyle = "white"
+  // ctx.lineWidth = 2
+
+  // for (let j = 0; j < ySteps; j++) {
+  //   const p = dist[j]
+
+  //   const x = maxP > 0
+  //     ? (p / maxP) * (width - 10)
+  //     : 0;
+
+  //   const y = height - 1 - (j / (ySteps - 1)) * (height - 1)
+
+  //   if (j === 0) ctx.moveTo(x, y)
+  //   else ctx.lineTo(x, y)
+  // }
+
+  // ctx.stroke()
+
+  const svgNS = "http://www.w3.org/2000/svg"
+
+  // create <svg>
+  const svg = document.createElementNS(svgNS, "svg")
+  const prevGraph = document.getElementById('probability-graph')
+  if(prevGraph !== null) {
+    prevGraph.remove()
+  }
+  svg.id = 'probability-graph'
+  svg.setAttribute("width", width)
+  svg.setAttribute("height", height)
+  svg.setAttribute("viewBox", `0 0 ${width} ${height}`)
+  // svg.style.mixBlendMode = "difference"
+  // svg.style.opacity = ".25"
+  // svg.style.opacity = ".75"
+
+  // create <polyline>
+  const centerIndex = Math.floor((ySteps - 1) / 2)
+
+  const topPoints = []
+  const bottomPoints = []
 
   for (let j = 0; j < ySteps; j++) {
     const p = dist[j]
 
-    const x = maxP > 0
-      ? (p / maxP) * (width - 10)
-      : 0;
-
+    const x = maxP > 0 ? (p / maxP) * (width - 10) * .95 + 8 : 0
     const y = height - 1 - (j / (ySteps - 1)) * (height - 1)
 
-    if (j === 0) ctx.moveTo(x, y)
-    else ctx.lineTo(x, y)
+    if (j <= centerIndex) {
+      topPoints.push(`${x},${y}`)
+    } else {
+      bottomPoints.push(`${x},${y}`)
+    }
   }
 
-  ctx.stroke()
+  // reverse top so it starts at center and draws upward
+  topPoints.reverse()
+
+  function makePolyline(points) {
+    const polyline = document.createElementNS(svgNS, "polyline")
+    polyline.setAttribute("points", points.join(" "))
+    polyline.setAttribute("fill", "none")
+    polyline.setAttribute("stroke", "white")
+    polyline.setAttribute("stroke-width", "4")
+    polyline.setAttribute("stroke-linecap", "round")
+    polyline.setAttribute("stroke-linejoin", "round")
+    return polyline
+  }
+
+  const polylineTop = makePolyline(topPoints)
+  const polylineBottom = makePolyline(bottomPoints)
+
+  svg.appendChild(polylineTop)
+  svg.appendChild(polylineBottom)
+
+  document.querySelector(".display").appendChild(svg)
+
+  for (const line of [polylineTop, polylineBottom]) {
+    const length = line.getTotalLength()
+
+    gsap.set(line, {
+      strokeDasharray: length,
+      strokeDashoffset: length,
+    })
+
+    gsap.to(line, {
+      strokeDashoffset: 0,
+      duration: .75,
+      ease: "power1.inOut",
+    })
+  }
 
   return dist
 }
@@ -800,7 +914,7 @@ let stagger = (paths, bohmian=true) => {
 
   if(!bohmian) {
     for (const [pathIndex, trajectory] of paths.entries()) {
-      console.log(trajectory)
+      // console.log(trajectory)
       if(trajectory.detectionY !== null) {
         detectElectron(trajectory.detectionY)
       }
@@ -854,6 +968,8 @@ let stagger = (paths, bohmian=true) => {
 
       const path = createSVG(trajectory.dString, stroke, strokeWidth, blurValue)
       svg.appendChild(path)
+      svg.style.zIndex = "1000000"
+      svg.style.pointerEvents = "none"
       
 
       const canvas = document.getElementById("buffer")
@@ -901,6 +1017,10 @@ let stagger = (paths, bohmian=true) => {
       })
     }
   }
+
+  // coverLeft()
+  // drawBarrier(d, slitWidth)
+  // drawPlaneWaves(k0, "#fff", "2")
 }
 
 let drawStaticDiagram = (stroke, strokeWidth) => {
@@ -1009,6 +1129,11 @@ let stopFiring = () => {
 
 const bohmBtn = document.getElementById('toggleBohmian')
 bohmBtn.addEventListener('click', () => {
+  if(!bohmian) {
+    bohmBtn.classList.remove('bohm-inactive')
+  } else {
+    bohmBtn.classList.add('bohm-inactive')
+  }
   bohmian = !bohmian
 })
 
@@ -1017,6 +1142,7 @@ const stop = document.getElementById("stop")
 const play = document.getElementById("play")
 fireBtn.addEventListener('click', async function (e) {
       if(!fire) {
+      renderFig3()
       fireContinuously(bohmian)
       stop.style.display = "block"
       play.style.display = "none"
@@ -1184,6 +1310,7 @@ const drawBarrier = (d, slitWidth = 1) => {
     // line.setAttribute("alpha", .1)
     line.setAttribute("stroke-width", "8")
     line.setAttribute("stroke-linecap", "round")
+    line.style.zIndex = 1000000000
 
     // group.appendChild(border)
     // group.appendChild(line)
@@ -1328,12 +1455,45 @@ lambdaSlider.oninput = event => {
   redraw()
 }
 
+let renderFig3 = () => {
+  const activeBtn = document.querySelector('.active-btn')
+  activeBtn.classList.remove('active-btn')
+  document.getElementById('fig3-btn').classList.add('active-btn')
+  figureCanvas.style.display = "none"
+  activeFigure = 3
+  const graph = document.getElementById('probability-graph')
+    if(graph !== null) {
+      graph.remove()
+    }
+}
+
 lambdaSlider.onchange = () => {
-  renderFig2()
+  switch (activeFigure) {
+    case 1:
+      renderFig1()
+      break
+    case 2:
+      renderFig2()
+      break
+    case 3:
+      renderFig3
+      // renderFig3()
+      break
+  }
 }
 
 dSlider.onchange = () => {
-  renderFig2()
+  switch (activeFigure) {
+    case 1:
+      renderFig1()
+      break
+    case 2:
+      renderFig2()
+      break
+    case 3:
+      renderFig3()
+      break
+  }
 }
 
 let redraw = () => {
@@ -1354,6 +1514,7 @@ let redraw = () => {
   }
 
   drawStaticDiagram("#fff", "2")
+  coverLeft()
   drawBarrier(d, slitWidth)
   drawPlaneWaves(k0, "#fff", "2")
   
@@ -1370,4 +1531,7 @@ drawStaticDiagram("#fff", "2")
 coverLeft()
 drawBarrier(d, slitWidth)
 drawPlaneWaves(k0, "#fff", "2")
+// resizeFigureCanvas()
+figureCanvas.style.display = "block"
+renderFig2()
 
