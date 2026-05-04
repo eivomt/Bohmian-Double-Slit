@@ -2,8 +2,12 @@ html, body {
     margin: 0;
     height: 100%;
     overflow: hidden;
-    background: #152542;
+    background-color: #050B14;
     font-family: sans-serif;
+}
+
+* {
+    font-family: 'SF Mono', monospace;
 }
 
 .controls {
@@ -60,11 +64,280 @@ button {
     cursor: pointer;
 }
 
-button:hover {
-    background: #666;
-}
 
 
 .controls {
     display: none;
+}
+
+.display {
+    position: relative;
+}
+
+#trajectory {
+    width: 100vh;
+    height: 100vh;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+#staticDiagram {
+    width: 100vh;
+    height: 100vh;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1000;
+}
+
+.measurements {
+    /* background-color: #051b30; */
+    /* border-left: 8px solid rgba(255,255,255,1); */
+    width: calc(100vw - 100vh);
+    height: 100vh;
+    position: relative;
+    top: 0;
+    left: 100vh;
+    z-index: 8;
+}
+
+.measurement {
+    position: absolute;
+    border-radius: 50%;
+    z-index: 2;
+}
+
+.measurement div {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+}
+
+.m1 {
+    border-radius: 50%;
+    background-color: #77a5d8;
+    width: 5px;
+    height: 5px;
+    filter: blur(1.5px);
+}
+
+.m2 {
+    border-radius: 50%;
+    background-color: #32d1df;
+    width: 4px;
+    height: 4px;
+    filter: blur(40px);
+}
+
+.m3 {
+    border-radius: 50%;
+    background-color: #1a6470;
+    width: 8px;
+    height: 8px;
+    filter: blur(128px);
+}
+
+.m4 {
+    border-radius: 50%;
+    background-color: #b7d8e6;
+    width: 2px;
+    height: 2px;
+    filter: blur(1px);
+}
+
+.m5 {
+    border-radius: 50%;
+    background-color: #2B536A;
+    width: 32px;
+    height: 32px;
+    filter: blur(166px);
+}
+
+.cover {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    width: 50vh;
+    z-index: 5;
+}
+
+.trajectories {
+    position: absolute;
+}
+
+canvas {
+    z-index: 5;
+    position: absolute;
+}
+
+.feedback {
+    width: 1rem;
+    height: 1rem;
+    background-color: #fff;
+    border-radius: 50%;
+    position: absolute;
+    transform: translate(-50%, -50%);
+    opacity: .0;
+    filter: blur(40px);
+    z-index: 15;
+}
+
+#fire {
+    position: absolute;
+    bottom: calc(1.34em + 8px + 1.5rem);
+    left: 50vh;
+    transform: translateX(-50%);
+    z-index: 10;
+    margin-bottom: 0 !important;
+    z-index: 99999999;
+}
+
+.fire {
+  background-color: #fff !important;
+  /* box-shadow: inset -4px 4px 8px #e2e2e2; */
+  border: white 2px solid;
+  color: #050B14;
+  font-weight: 900;
+  height: 4rem !important;
+  width: 4rem !important;
+  border-radius: 50%;
+  transition: .15s linear;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.fire:hover {
+  background-color: #fff;
+}
+
+#stop, #play {
+  height: 40%;
+  fill: #050B14;
+}
+
+.temporaryBtn {
+    position: absolute;
+    left: 10vh;
+    z-index: 1000;
+}
+
+.fig-btns {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: calc(100vw - 100vh);
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-around;
+    z-index: 9999999;
+    height: 100vh;
+    outline: 8px solid white
+}
+
+.b-btn {
+    position: absolute;
+    top: 0;
+    left: 50vh;
+    width: 50vh;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-around;
+    z-index: 9999999;
+    height: 100vh;
+}
+
+.btn {
+    height: 2rem;
+    width: 2rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 50%;
+    margin-bottom: calc(1.34em + 8px + 2.5rem);
+    background-color: #050B14;
+    border: 0px solid white;
+    transition: .1s linear;
+    font-weight: 900;
+}
+
+
+.fig-btn:hover {
+    /* background-color: rgba(0,0,0,0) !important; */
+    outline: 2px solid white;
+}
+
+.active-btn {
+    outline: 2px solid white;
+}
+
+.bohm-btn {
+    background-color: #050B14;
+    color: #fff;
+    outline: 2px solid white !important;
+}
+
+.bohm-inactive {
+    background-color: #fff;
+    color: #050B14;
+    outline: 0px solid white !important;
+}
+
+#probability-graph {
+    position: absolute;
+    top: 0;
+    right: 0;
+    z-index: 1000000;
+}
+
+.slider-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 50vh;
+    height: 100vh;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    flex-direction: column;
+    z-index: 1001;
+}
+
+
+input[type="range"] {
+    position: relative;
+    width: 30vh;
+    z-index: 10;
+}
+
+input[type="range"]:focus {
+    outline: none;
+}
+
+
+.variableValue {
+    display: flex;
+    justify-content: center;
+    z-index: 10;
+    font-size: small;
+    color: #fff;
+}
+
+.variableIdentifier {
+    display: flex;
+    justify-content: center;
+    z-index: 10;
+    color: #fff;
+}
+
+.variable {
+    margin-bottom: 2.5rem;
+    display: flex;
+    flex-direction: column;
 }
