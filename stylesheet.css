@@ -88,12 +88,12 @@ button {
     position: absolute;
     top: 0;
     left: 0;
-    z-index: 5;
+    z-index: 1000;
 }
 
 .measurements {
     /* background-color: #051b30; */
-    border-left: 8px solid rgba(255,255,255,1);
+    /* border-left: 8px solid rgba(255,255,255,1); */
     width: calc(100vw - 100vh);
     height: 100vh;
     position: relative;
@@ -238,6 +238,7 @@ canvas {
     justify-content: space-around;
     z-index: 9999999;
     height: 100vh;
+    outline: 8px solid white
 }
 
 .b-btn {
@@ -305,6 +306,7 @@ canvas {
     justify-content: flex-end;
     align-items: center;
     flex-direction: column;
+    z-index: 1001;
 }
 
 

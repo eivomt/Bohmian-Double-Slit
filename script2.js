@@ -485,7 +485,7 @@ figureCanvas.style.position = "fixed"
 figureCanvas.style.top = "0"
 figureCanvas.style.right = "0"
 figureCanvas.style.zIndex = "1000"
-figureCanvas.style.borderLeft = "8px solid white"
+// figureCanvas.style.borderLeft = "8px solid white"
 figureCanvas.style.background = "black"
 
 document.body.appendChild(figureCanvas)
@@ -927,7 +927,7 @@ let stagger = (paths, bohmian=true) => {
   for (const [pathIndex, trajectory] of paths.entries()) {
     let detected = false
 
-    for (let i = 0; i < 5; i++ ) {
+    for (let i = 4; i < 5; i++ ) {
       
 
       let strokeWidth, stroke, blurValue, disappears
@@ -968,7 +968,7 @@ let stagger = (paths, bohmian=true) => {
 
       const path = createSVG(trajectory.dString, stroke, strokeWidth, blurValue)
       svg.appendChild(path)
-      svg.style.zIndex = "1000000"
+      svg.style.zIndex = "100"
       svg.style.pointerEvents = "none"
       
 
@@ -1310,7 +1310,7 @@ const drawBarrier = (d, slitWidth = 1) => {
     // line.setAttribute("alpha", .1)
     line.setAttribute("stroke-width", "8")
     line.setAttribute("stroke-linecap", "round")
-    line.style.zIndex = 1000000000
+    line.style.zIndex = "1000000000"
 
     // group.appendChild(border)
     // group.appendChild(line)
@@ -1534,4 +1534,7 @@ drawPlaneWaves(k0, "#fff", "2")
 // resizeFigureCanvas()
 figureCanvas.style.display = "block"
 renderFig2()
+
+// console.log('lambda: ' + document.getElementById('lambdaSlider').value.toString())
+// console.log('d: ' + document.getElementById('dSlider').value.toString())
 
